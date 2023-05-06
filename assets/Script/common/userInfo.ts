@@ -16,6 +16,8 @@ export class userInfo extends Component {
     public user_room_cards;
     static instance: any;
 
+    public SeataIndex;
+
     public static getInstance()
     {
         if(userInfo.instance == null)

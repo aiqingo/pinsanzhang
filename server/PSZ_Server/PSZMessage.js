@@ -54,9 +54,9 @@ class PSZMessage /*extends message*/ {
             case "request_room_info":
                 this.onRequestRoomInfo(type,data,client);
                 break;
-            case "ready_ok":
-                this.onReady(type,data,client);
-                break;
+            // case "ready_ok":
+            //     this.onReady(type,data,client);
+            //     break;
             default:
                 break;
         }
@@ -123,24 +123,19 @@ class PSZMessage /*extends message*/ {
         });
     }
 
+    //自己加的处理玩家准备
     onReady(type,data,client)
     {
-        console.log(data);
-        // if (roomMgr.getInstance()._roomList.length == 0)
-        // {
-        //
-        // }
-        // else
-        // {
-        //     for (let i = 0; i <roomMgr.getInstance()._roomList.length;i++)
-        //     {
-        //         let tmpRoom =  roomMgr.getInstance()._roomList[i];
-        //         if (tmpRoom.roomID == data.roomID)
-        //         {
-        //             tmpRoom.setPlayerReady(data.userID,client);
-        //         }
-        //     }
-        // }
+        // console.log("自己加的",data);
+        for (let i = 0; i <roomMgr.getInstance()._roomList.length;i++)
+        {
+            let tmpRoom =  roomMgr.getInstance()._roomList[i];
+            if (tmpRoom.roomID == data.roomID)
+            {
+                tmpRoom.ReadyOk(data)
+            }
+        }
+
     }
 
 

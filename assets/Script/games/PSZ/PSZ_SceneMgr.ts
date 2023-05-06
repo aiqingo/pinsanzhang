@@ -25,6 +25,7 @@ export class PSZ_SceneMgr extends Component {
     ZHUNBEIIMAGE = "ready_ok";
     LIXIAN = "offline";
 
+
     
     @property(Prefab)
     cardNodeprefab:Prefab = null;
@@ -44,7 +45,8 @@ export class PSZ_SceneMgr extends Component {
     {
         globalThis._eventTarget.on("request_room_info",this.onRequestRoomInfo,this);
         globalThis._eventTarget.on("sync_all_player_info",this.onSyncAllPlayerInfo,this);
-        
+        globalThis._eventTarget.on("sync_all_player_ready_state",this.onSyncAllPlayerReadyState,this);
+        globalThis._eventTarget.on("start_game",this.onStartGame,this);
     }
 
     public onRequestRoomInfo(data)
@@ -67,12 +69,12 @@ export class PSZ_SceneMgr extends Component {
         console.log("更新玩家信息");
         console.log(data);
         let mySeataIndex;
-        let otherSeatIndex;
         for (let i = 0; i < data.length; i++) {
             let playerInfo = data[i];
             if(playerInfo.user_id==globalThis._userInfo.user_id)
             {
                 mySeataIndex = playerInfo.user_seatIndex;
+                globalThis._userInfo.SeataIndex = playerInfo.user_seatIndex;
             }
         }
         for (let i = 0; i < data.length; i++) {
@@ -82,26 +84,33 @@ export class PSZ_SceneMgr extends Component {
                 case  0:
                     this.updataUserInfo(0,playerInfo)
                     this.seatList[0].active = true;
+                        this.updateOK(0,data[i].user_ready);
                     break;
                 case  1:
                     this.updataUserInfo(1,playerInfo)
                     this.seatList[1].active = true;
+                    if(data[i].user_ready == true)
+                        this.updateOK(1,data[i].user_ready);
                     break;
                 case  2:
                     this.updataUserInfo(2,playerInfo)
                     this.seatList[2].active = true;
+                        this.updateOK(2,data[i].user_ready);
                     break;
                 case  3:
                     this.updataUserInfo(3,playerInfo)
                     this.seatList[3].active = true;
+                        this.updateOK(3,data[i].user_ready);
                     break;
                 case  4:
                     this.updataUserInfo(4,playerInfo)
                     this.seatList[4].active = true;
+                        this.updateOK(4,data[i].user_ready);
                     break;
                 case  5:
                     this.updataUserInfo(5,playerInfo)
                     this.seatList[5].active = true;
+                        this.updateOK(5,data[i].user_ready);
                     break;
                 default:
                     console.log("座位号计算错误")
@@ -116,16 +125,19 @@ export class PSZ_SceneMgr extends Component {
         // let nameLabel = seatNode.getChildByName("headNode").getChildByName("touxiangyuanjiao").getChildByName("NameLabel").getComponent(Label);
         // nameLabel.string = userData.user_name;
         // let headNode = seatNode.getChildByName("headNode");
+        //创建玩家头像
         let headNode = instantiate(this.headNodeprefab)
         this.instantiateHeadNode[seatIndex] = headNode;
         seatNode.addChild(headNode);
         let nameLabel = headNode.getChildByName("touxiangyuanjiao").getChildByName("NameLabel").getComponent(Label);
         nameLabel.string = userData.user_name;
+        //创建玩家的牌
         let cardNode = instantiate(this.cardNodeprefab)
         cardNode.active = false
         this.instantiateCardNode[seatIndex] = cardNode;
         this.cardList[seatIndex].addChild(cardNode);
-   
+      
+ 
 
     }
 
@@ -139,9 +151,33 @@ export class PSZ_SceneMgr extends Component {
     onReadyBynClick()
     {
         this.readyBtn.active = false;
+        //用room里面的准备方法处理需要打开
+        // globalThis._PSZClientMgr._sendMessage("ready_ok",{userID:globalThis._userInfo.user_id,roomID:globalThis._userInfo.room_id})
+        //这是用服务器player里面的方法处理
         globalThis._PSZClientMgr._sendMessage("ready_ok",{userID:globalThis._userInfo.user_id})
+    
     }
 
+    onSyncAllPlayerReadyState(data)
+    {
+        console.log("<玩家准备的数据---->",data)
+        for (let i = 0; i < data.length; i++) {
+            let playerInfo = data[i];
+            let index = this.getLocalIndex(playerInfo.user_seatIndex,globalThis._userInfo.SeataIndex,6)
+            this.instantiateHeadNode[index].getChildByName("ready_ok").active = data[i].ready_state;
+     
+        }
+    }
+    //更新以准备玩家OK
+    updateOK(seatIndex,ready_state)
+    {
+        this.instantiateHeadNode[seatIndex].getChildByName("ready_ok").active = ready_state;
+    }
+
+    onStartGame(data)
+    {
+        console.log("<游戏开始------>",data)
+    }
 
 }
 

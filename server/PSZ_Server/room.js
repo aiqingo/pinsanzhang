@@ -44,6 +44,7 @@ class Room{
     //     // this.syncPlayerInfo();
     // }
 
+    //同步进去房间的玩家信息
     syncPlayerInfo()
     {
         let playerInfoList = [];
@@ -69,6 +70,110 @@ class Room{
             current_numbers:this.current_numbers,
         }
     }
+
+    StartGameOrSyncReadyMessage(player)
+    {
+        player.readyState = true;
+        if(this.isStartGame())
+        {
+            this.syncStartGame();
+        }
+        else {
+            this.syncPlayerReadyOkMessage(player);
+        }
+    }
+
+    //同步玩家准备状态
+    syncPlayerReadyOkMessage(player)
+    {
+        //准备是同步消息
+        // console.log("临时打印",this.playerList);
+        // player.readyState = true;
+        let playerInfoList = [];
+        for (let i = 0 ; i<this.playerList.length;i++)
+        {
+            let playerReadyState = this.playerList[i].getPlayerReadyState();
+            playerInfoList.push(playerReadyState);
+        }
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_ready_state",playerInfoList,player.client);
+        }
+
+        // this.allReadyOk();
+    }
+
+    //自己加 的处理玩家准备逻辑
+    // 通过uid获取用户信息进行修改，在同步给其他玩家
+    ReadyOk(data)
+    {
+        let player = this.getUserPlayer(data.userID)
+        player.readyState = true;
+        this.syncPlayerReadyOkMessage(player)
+    }
+
+    //获取用户数据方法
+    getUserPlayer(uid)
+    {
+
+        for (let i = 0 ; i<this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            if(player.userID == uid)
+            {
+                return player;
+            }
+        }
+    }
+
+
+    isStartGame()
+    {
+        let res = true;
+        this.playerList.forEach((player)=>{
+            if (!player.readyState)
+            {
+                res = false;
+            }
+        })
+        return res;
+    }
+
+    syncStartGame()
+    {
+
+        this.playerList.forEach((player)=>{
+            global.PSZServerMgr.PSZServerMgr.sendMessage("start_game",{data:"开始游戏"},player.client);
+
+        })
+        // this.allReadyOk()
+    }
+
+
+    allReadyOk()
+    {
+        let index = 0;
+        for (let i = 0 ; i<this.playerList.length;i++)
+        {
+            if (this.playerList[i].getIsReadyOK())
+            {
+                index++;
+            }
+        }
+        console.log("准备的人数",index);
+        console.log("房间内所有人",this.playerList.length);
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            if (index>=this.playerList.length)
+            {
+                let player = this.playerList[i];
+                global.PSZServerMgr.PSZServerMgr.sendMessage("game_play_go",{data:"游戏开始"},player.client);
+            }
+        }
+
+    }
+
 }
 
 
