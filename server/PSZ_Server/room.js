@@ -12,6 +12,7 @@ class Room{
         console.log("房间id= ",this.roomID);
         this.seatIndexList = [0,1,2,3,4,5];
         this.playerList = [];
+        this.roomCard = undefined;
     }
 
     getRoomInfo()
@@ -74,7 +75,9 @@ class Room{
     StartGameOrSyncReadyMessage(player)
     {
         player.readyState = true;
-        if(this.isStartGame())
+        let isPlay = this.isStartGame()
+        let index = this.isStartGameIndex()
+        if(isPlay == true && index >=2)
         {
             this.syncStartGame();
         }
@@ -128,21 +131,99 @@ class Room{
     }
 
 
+    SendCard(player)
+    {
+
+    }
+
+    洗牌
+    Shuffle()
+    {
+        //100 红方块
+        /*
+            103 方块3
+            104 方块4
+            105 方块5
+            106 方块6
+            107 方块7
+            108 方块8
+            109 方块9
+            110 方块10
+            111 方块J
+            112 方块Q
+            113 方块K
+            114 方块A
+        */
+        //200 黑梅花
+        //300 红桃
+        //400 黑桃
+        let  pokers = [
+            102,103,104,105,106,107,108,109,110,111,112,113,114,
+            202,203,204,205,206,207,208,209,210,211,212,213,214,
+            302,303,304,305,306,307,308,309,310,311,312,313,314,
+            402,403,404,405,406,407,408,409,410,411,412,413,414
+        ];
+
+        let  arr = this.Random(this.Random(this.Random(pokers)));
+
+        console.log("<随机牌----->",arr)
+
+        return  arr;
+
+    }
+
+    Random(arr)
+    {
+        arr.sort(
+            function ()
+            {
+                if (Math.random()<0.5) {
+                    return -1;
+                }
+                return 1;
+            }
+        )
+        return arr;
+    }
+
+
+
+
     isStartGame()
     {
         let res = true;
+        let index = 0;
         this.playerList.forEach((player)=>{
             if (!player.readyState)
             {
                 res = false;
             }
+            else
+            {
+                index++;
+            }
+
         })
         return res;
     }
 
+    isStartGameIndex()
+    {
+        let index = 0;
+        this.playerList.forEach((player)=>{
+            if (player.readyState)
+            {
+                index++;
+            }
+        })
+        return index;
+    }
+
     syncStartGame()
     {
-
+        let cardarr =  this.Shuffle();
+        this.roomCard = cardarr;
+        console.log("<房间内的牌》》",this.roomCard)
         this.playerList.forEach((player)=>{
             global.PSZServerMgr.PSZServerMgr.sendMessage("start_game",{data:"开始游戏"},player.client);
 
@@ -174,7 +255,9 @@ class Room{
 
     }
 
+
 }
 
 
 module.exports = Room;
+

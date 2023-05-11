@@ -24,8 +24,8 @@ export class PSZ_SceneMgr extends Component {
 
     ZHUNBEIIMAGE = "ready_ok";
     LIXIAN = "offline";
-
-
+    //房间内多少人
+    roomPlayerNum:number = 0;
     
     @property(Prefab)
     cardNodeprefab:Prefab = null;
@@ -47,6 +47,8 @@ export class PSZ_SceneMgr extends Component {
         globalThis._eventTarget.on("sync_all_player_info",this.onSyncAllPlayerInfo,this);
         globalThis._eventTarget.on("sync_all_player_ready_state",this.onSyncAllPlayerReadyState,this);
         globalThis._eventTarget.on("start_game",this.onStartGame,this);
+        // globalThis._eventTarget.on("game_play_one",this.onPlayOne,this);
+        
     }
 
     public onRequestRoomInfo(data)
@@ -131,14 +133,6 @@ export class PSZ_SceneMgr extends Component {
         seatNode.addChild(headNode);
         let nameLabel = headNode.getChildByName("touxiangyuanjiao").getChildByName("NameLabel").getComponent(Label);
         nameLabel.string = userData.user_name;
-        //创建玩家的牌
-        let cardNode = instantiate(this.cardNodeprefab)
-        cardNode.active = false
-        this.instantiateCardNode[seatIndex] = cardNode;
-        this.cardList[seatIndex].addChild(cardNode);
-      
- 
-
     }
 
     getLocalIndex(otherIndex,thisIndex,playernumbers)
@@ -164,21 +158,37 @@ export class PSZ_SceneMgr extends Component {
         for (let i = 0; i < data.length; i++) {
             let playerInfo = data[i];
             let index = this.getLocalIndex(playerInfo.user_seatIndex,globalThis._userInfo.SeataIndex,6)
-            this.instantiateHeadNode[index].getChildByName("ready_ok").active = data[i].ready_state;
+            this.instantiateHeadNode[index].getChildByName(this.ZHUNBEIIMAGE).active = data[i].ready_state;
      
         }
     }
     //更新以准备玩家OK
     updateOK(seatIndex,ready_state)
     {
-        this.instantiateHeadNode[seatIndex].getChildByName("ready_ok").active = ready_state;
+        this.instantiateHeadNode[seatIndex].getChildByName(this.ZHUNBEIIMAGE).active = ready_state;
     }
 
     onStartGame(data)
     {
         console.log("<游戏开始------>",data)
+        let len = this.instantiateHeadNode.length
+        for( let i = 0; i <this.instantiateHeadNode.length; i ++ )
+        {
+           if (this.instantiateHeadNode[i] != undefined)
+           {
+                console.log("<进入了I次>",i)
+                this.instantiateHeadNode[i].getChildByName(this.ZHUNBEIIMAGE).active = false;
+           }
+        }
+        
+    
     }
 
+    // onPlayOne(data)
+    // {
+    //     console.log("<房间内只有一人无法开始了游戏------>",data)
+
+    // }
 }
 
 
