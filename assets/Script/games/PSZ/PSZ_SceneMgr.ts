@@ -1,4 +1,4 @@
-import { _decorator, Component, instantiate, Label, Node, Prefab, Vec3 } from 'cc';
+import { _decorator, Button, Component, instantiate, Label, Node, Prefab, resources, Sprite, SpriteFrame, Texture2D, Vec3 } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('PSZ_SceneMgr')
@@ -6,6 +6,7 @@ export class PSZ_SceneMgr extends Component {
 
     @property(Label)
     roomID:Label = null;
+    //局数
     @property(Label)
     gameCount:Label = null;
 
@@ -17,26 +18,50 @@ export class PSZ_SceneMgr extends Component {
 
     @property(Prefab)
     headNodeprefab:Prefab = null;
-
+    //准备node
     @property(Node)
     readyBtn:Node = null;
+    //比牌node
+    @property(Node)
+    compareNode:Node = null;
+    //弃牌node
+    @property(Node)
+    abandonNode:Node = null;
 
-
+    QIPAI = "qipai";
     ZHUNBEIIMAGE = "ready_ok";
     LIXIAN = "offline";
+
+    //牌的路径
+    PAIDELUJING = "img/games/PSZ/card/";
+    //类似后缀
+    HOUZHUI = "/spriteFrame";
+    //牌的缩放
+    CARDSHUOFANG = 0.65;
+    //第一张牌
+    card0 = "card0";
+    card1 = "card1";
+    card2 = "card2";
+    //牌的图片载体
+    PAIDETUPIAN = "ddzBack";
+
+
     //房间内多少人
     roomPlayerNum:number = 0;
     
     @property(Prefab)
     cardNodeprefab:Prefab = null;
     //当前房间角色头像gameobgect
-    private instantiateHeadNode:Node[] = [] 
+    private instantiateHeadNode:Node[] = [] ;
     //当前房间牌gameobgect
-    private instantiateCardNode:Node[] = [] 
+    private instantiateCardNode:Node[] = [] ;
 
     start() {
         this._init();
+      
     }
+
+ 
 
     update(deltaTime: number) {
         
@@ -45,11 +70,15 @@ export class PSZ_SceneMgr extends Component {
     {
         globalThis._eventTarget.on("request_room_info",this.onRequestRoomInfo,this);
         globalThis._eventTarget.on("sync_all_player_info",this.onSyncAllPlayerInfo,this);
+        globalThis._eventTarget.on("sync_all_player_score",this.onSyncAllPlayerScore,this);
+        globalThis._eventTarget.on("sync_all_player_abandon",this.onSyncAllPlayerAbandon,this);
+        globalThis._eventTarget.on("sync_all_player_win",this.onSyncAllPlayerWin,this);
         globalThis._eventTarget.on("sync_all_player_ready_state",this.onSyncAllPlayerReadyState,this);
         globalThis._eventTarget.on("start_game",this.onStartGame,this);
-        // globalThis._eventTarget.on("game_play_one",this.onPlayOne,this);
-        
+        globalThis._eventTarget.on("sync_game_num",this.onUpdateCurrent,this);
+
     }
+  
 
     public onRequestRoomInfo(data)
     {
@@ -59,8 +88,15 @@ export class PSZ_SceneMgr extends Component {
         }
         this.roomID.string = data.room_id;
         this.gameCount.string = data.current_numbers + "/" + data.game_numbers;
+        this.SetNodeActive(this.abandonNode,false);
+        this.SetNodeActive(this.compareNode,false);
     }
-
+    //控制显示隐藏
+    SetNodeActive(noed:Node,isshow:boolean)
+    {
+        noed.active = isshow;
+     
+    }
     public onSyncAllPlayerInfo(data)
     {
 
@@ -79,6 +115,10 @@ export class PSZ_SceneMgr extends Component {
                 globalThis._userInfo.SeataIndex = playerInfo.user_seatIndex;
             }
         }
+        this.instantiateHeadNode.forEach(element => {
+            element.destroy();
+        });
+      
         for (let i = 0; i < data.length; i++) {
             let playerInfo = data[i];
             let index = this.getLocalIndex(playerInfo.user_seatIndex,mySeataIndex,6)
@@ -133,6 +173,7 @@ export class PSZ_SceneMgr extends Component {
         seatNode.addChild(headNode);
         let nameLabel = headNode.getChildByName("touxiangyuanjiao").getChildByName("NameLabel").getComponent(Label);
         nameLabel.string = userData.user_name;
+        this.GengXinFenShu(seatIndex,userData.user_score)
     }
 
     getLocalIndex(otherIndex,thisIndex,playernumbers)
@@ -151,6 +192,25 @@ export class PSZ_SceneMgr extends Component {
         globalThis._PSZClientMgr._sendMessage("ready_ok",{userID:globalThis._userInfo.user_id})
     
     }
+    //弃牌
+    onAbandon()
+    {
+        let lcaolnode = this.instantiateCardNode[0].getChildByName(this.QIPAI);
+        this.SetNodeActive(lcaolnode,true);
+
+        //弃牌后关闭按钮点击功能
+        this.compareNode.getComponent(Button).interactable = false;
+        this.abandonNode.getComponent(Button).interactable = false;
+
+        globalThis._PSZClientMgr._sendMessage("abandon",{userID:globalThis._userInfo.user_id})
+    }
+
+    //比牌
+    onCompare()
+    {
+        
+    }
+
 
     onSyncAllPlayerReadyState(data)
     {
@@ -176,12 +236,22 @@ export class PSZ_SceneMgr extends Component {
         {
            if (this.instantiateHeadNode[i] != undefined)
            {
-                console.log("<进入了I次>",i)
                 this.instantiateHeadNode[i].getChildByName(this.ZHUNBEIIMAGE).active = false;
+                //创建玩家的牌
+                let cardNode = instantiate(this.cardNodeprefab)
+                cardNode.getChildByName(this.QIPAI).active = false;
+                // cardNode.active = false
+                this.instantiateCardNode[i] = cardNode;
+                this.cardList[i].addChild(cardNode);
            }
         }
-        
-    
+        //显示一组牌面
+        this.XianShiPaiMian(this.card0,data.carde0);
+        this.XianShiPaiMian(this.card1,data.carde1);
+        this.XianShiPaiMian(this.card2,data.carde2);
+        //显示弃牌按钮和比牌按钮
+        this.SetNodeActive(this.abandonNode,true);
+        this.SetNodeActive(this.compareNode,true);
     }
 
     // onPlayOne(data)
@@ -189,6 +259,68 @@ export class PSZ_SceneMgr extends Component {
     //     console.log("<房间内只有一人无法开始了游戏------>",data)
 
     // }
+
+    //显示牌面
+    XianShiPaiMian(name:string,sum)
+    {
+        resources.load(this.PAIDELUJING+sum+this.HOUZHUI,SpriteFrame,(err,sprite)=>
+        {
+            this.instantiateCardNode[0].getChildByName(name).getChildByName(this.PAIDETUPIAN).getComponent(Sprite).spriteFrame = sprite
+            this.instantiateCardNode[0].getChildByName(name).getChildByName(this.PAIDETUPIAN).scale = new Vec3(this.CARDSHUOFANG, this.CARDSHUOFANG, this.CARDSHUOFANG)
+        })
+    }
+    //更新分数
+    GengXinFenShu(index,scoresum)
+    {
+        let scoreLabel = this.instantiateHeadNode[index].getChildByName("touxiangyuanjiao").getChildByName("scoreLabel").getComponent(Label);
+        scoreLabel.string = scoresum;
+    }
+
+    onSyncAllPlayerScore(dataInfo)
+    {
+        console.log("进入开始前更新所有玩家分数",dataInfo);
+        for (let i = 0; i < dataInfo.length; i++) {
+            let   data = dataInfo[i]
+            let index = this.getLocalIndex(data.user_seatIndex,globalThis._userInfo.SeataIndex,6);
+            console.log("index",index)
+            this.GengXinFenShu(index,data.user_score);
+        }
+
+    }
+
+
+    onSyncAllPlayerAbandon(dataInfo)
+    {
+        console.log("同步弃牌",dataInfo);
+        for (let i = 0; i < dataInfo.length; i++) {
+            let   data = dataInfo[i]
+            let index = this.getLocalIndex(data.user_seatIndex,globalThis._userInfo.SeataIndex,6);
+            let cardeNode = this.instantiateCardNode[index].getChildByName(this.QIPAI);
+            this.SetNodeActive(cardeNode,data.user_isAbandon);
+        }
+
+    }
+
+
+
+    onSyncAllPlayerWin(data)
+    {
+        console.log("<PSZ------结束>",data)
+    }
+
+    onUpdateCurrent(data)
+    {
+        this.gameCount.string = data.current_numbers + "/" + data.game_numbers;
+    }
+
+
+
+
+
 }
+
+
+
+
 
 

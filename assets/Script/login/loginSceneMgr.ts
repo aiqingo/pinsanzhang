@@ -1,4 +1,4 @@
-import { _decorator, Component, director, EditBox, Node } from 'cc';
+import { _decorator, Component, director, EditBox, Node, resources, Sprite, SpriteFrame } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('loginSceneMgr')
@@ -6,9 +6,11 @@ export class loginSceneMgr extends Component {
 
     @property(Node)
     my_EdiyBox:Node = null; 
-
+    @property(Node)
+    aaaa:Node = null; 
     
     start() {
+       
         globalThis._eventTarget.on("login",this.onLoginMessage,this);
     }
 
@@ -37,7 +39,8 @@ export class loginSceneMgr extends Component {
                 break;
         }
         globalThis._loginClientMgr._sendMessage("login",{id:senddata});
-        console.log("登入了点击按钮")
+    
+
     }
 
     public onLoginMessage(data)

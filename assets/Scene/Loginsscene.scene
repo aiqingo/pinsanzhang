@@ -244,7 +244,7 @@
     "_priority": 1073741824,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 360,
+    "_orthoHeight": 361.7391304347826,
     "_near": 1,
     "_far": 2000,
     "_color": {
@@ -1279,6 +1279,9 @@
     "__prefab": null,
     "my_EdiyBox": {
       "__id__": 19
+    },
+    "aaaa": {
+      "__id__": 7
     },
     "_id": "e66y4EAgJLWo7JZxL8EnBy"
   },
