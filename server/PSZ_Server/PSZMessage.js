@@ -57,6 +57,7 @@ class PSZMessage /*extends message*/ {
             // case "ready_ok":
             //     this.onReady(type,data,client);
             //     break;
+
             default:
                 break;
         }

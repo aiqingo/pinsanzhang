@@ -1,4 +1,4 @@
-import { _decorator, Button, Component, instantiate, Label, Node, Prefab, resources, Sprite, SpriteFrame, Texture2D, Vec3 } from 'cc';
+import { _decorator, Button, Component, instantiate, Label, math, Node, Prefab, resources, Sprite, SpriteFrame, Texture2D, Vec3 } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('PSZ_SceneMgr')
@@ -27,9 +27,33 @@ export class PSZ_SceneMgr extends Component {
     //弃牌node
     @property(Node)
     abandonNode:Node = null;
+    //加注
+    @property(Node)
+    addGoldButton:Node = null;
+    //跟注
+    @property(Node)
+    heelGoldButton:Node = null;
+    //下注
+    @property(Node)
+    downGoldButton:Node = null;
+    
+    //倒计时
+    @property(Node)
+    timeNode:Node = null;
+    //倒计时字体
+    @property(Label)
+    timeLabel:Label = null;
+    //下注界面
+    @property(Node)
+    downNode:Node = null;
 
+
+
+    //弃牌image
     QIPAI = "qipai";
+    //准备image
     ZHUNBEIIMAGE = "ready_ok";
+    //离线image
     LIXIAN = "offline";
 
     //牌的路径
@@ -44,11 +68,17 @@ export class PSZ_SceneMgr extends Component {
     card2 = "card2";
     //牌的图片载体
     PAIDETUPIAN = "ddzBack";
-
-
+    //是否可以倒计时
+    isTime = false;
+    //倒计时变量
+    Time = 0;
     //房间内多少人
     roomPlayerNum:number = 0;
-    
+    //下注分数
+    downScore:number = 0;
+
+
+
     @property(Prefab)
     cardNodeprefab:Prefab = null;
     //当前房间角色头像gameobgect
@@ -58,14 +88,17 @@ export class PSZ_SceneMgr extends Component {
 
     start() {
         this._init();
-      
+        this.SetNodeActive(this.abandonNode,false);
+        this.SetNodeActive(this.compareNode,false);
+        this.SetNodeActive(this.addGoldButton,false);
+        this.SetNodeActive(this.heelGoldButton,false);
+        this.SetNodeActive(this.downGoldButton,false);
+        this.SetNodeActive(this.timeNode,false);
     }
 
  
 
-    update(deltaTime: number) {
-        
-    }
+   
     private _init()
     {
         globalThis._eventTarget.on("request_room_info",this.onRequestRoomInfo,this);
@@ -76,6 +109,7 @@ export class PSZ_SceneMgr extends Component {
         globalThis._eventTarget.on("sync_all_player_ready_state",this.onSyncAllPlayerReadyState,this);
         globalThis._eventTarget.on("start_game",this.onStartGame,this);
         globalThis._eventTarget.on("sync_game_num",this.onUpdateCurrent,this);
+        globalThis._eventTarget.on("show_ui",this.onShowUI,this);
 
     }
   
@@ -88,8 +122,7 @@ export class PSZ_SceneMgr extends Component {
         }
         this.roomID.string = data.room_id;
         this.gameCount.string = data.current_numbers + "/" + data.game_numbers;
-        this.SetNodeActive(this.abandonNode,false);
-        this.SetNodeActive(this.compareNode,false);
+
     }
     //控制显示隐藏
     SetNodeActive(noed:Node,isshow:boolean)
@@ -249,9 +282,9 @@ export class PSZ_SceneMgr extends Component {
         this.XianShiPaiMian(this.card0,data.carde0);
         this.XianShiPaiMian(this.card1,data.carde1);
         this.XianShiPaiMian(this.card2,data.carde2);
-        //显示弃牌按钮和比牌按钮
+        //显示弃牌按钮
         this.SetNodeActive(this.abandonNode,true);
-        this.SetNodeActive(this.compareNode,true);
+        // this.SetNodeActive(this.compareNode,true);
     }
 
     // onPlayOne(data)
@@ -302,21 +335,96 @@ export class PSZ_SceneMgr extends Component {
     }
 
 
-
+    //结束
     onSyncAllPlayerWin(data)
     {
         console.log("<PSZ------结束>",data)
     }
-
+    //更新第几局
     onUpdateCurrent(data)
     {
         this.gameCount.string = data.current_numbers + "/" + data.game_numbers;
     }
 
+    //加注按钮事件
+    onAddGoldClick()
+    {
+
+    }
+
+    //跟注按钮事件
+    onHeelGoldClick()
+    {
+
+    }
+
+    //下注按钮事件
+    onDownGoldClick()
+    {
+        this.SetNodeActive(this.downNode,true);
+    }
+    //显示玩家可控制的ui
+    onShowUI(data)
+    {
+        this.Time = data.time
+        this.isTime = true;
+
+        this.SetNodeActive(this.timeNode,true);
+        if(data.isOne)
+        {
+            //下注
+            this.SetNodeActive(this.downGoldButton,true);
+        }
+        else
+        { 
+            //下注
+            this.SetNodeActive(this.downGoldButton,true);
+            //跟注
+            this.SetNodeActive(this.heelGoldButton,true);
+            //加注
+            this.SetNodeActive(this.addGoldButton,true);
+            //比牌
+            this.SetNodeActive(this.compareNode,true);
+        }
+     
+      
+    }
 
 
+    onDownNodeClose()
+    {
+        this.SetNodeActive(this.downNode,false);
+    }
 
+    onDownScoreClose(target,arg)
+    {
+        this.downScore = Number(arg);
+        console.log("下注的分数>>>>>>>>"+this.downScore)
+        this.SetNodeActive(this.downNode,false);
+    }
 
+    update(dt: number) {
+
+        if(this.isTime)
+        {
+            if(this.Time > 0 )
+            {
+                this.Time -= dt;
+            }
+
+            this.timeLabel.string = Math.floor(this.Time)+"";
+
+            if(this.Time <= 0 )
+            {
+                this.isTime = false;
+                //倒计时结束自动下注
+
+            }
+
+        } 
+      
+        
+    }
 }
 
 

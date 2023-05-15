@@ -1,14 +1,18 @@
 {
   "__version__": "3.0.6",
   "game": {
-    "name": "未知游戏",
-    "app_id": "UNKNOW",
+    "app_id": "639924754",
+    "name": "fangkayouxi",
     "c_id": "0"
   },
   "appConfigMaps": [
     {
       "app_id": "UNKNOW",
       "config_id": "722231"
+    },
+    {
+      "app_id": "639924754",
+      "config_id": "91c38b"
     }
   ],
   "configs": [
@@ -18,6 +22,19 @@
       "config_name": "Default",
       "config_remarks": "",
       "services": []
+    },
+    {
+      "app_id": "639924754",
+      "config_id": "91c38b",
+      "config_name": "Default",
+      "config_remarks": "",
+      "services": [
+        {
+          "service_id": "235",
+          "enable": true,
+          "param": {}
+        }
+      ]
     }
   ]
 }

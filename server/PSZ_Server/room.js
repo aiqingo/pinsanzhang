@@ -13,12 +13,12 @@ class Room{
         this.seatIndexList = [0,1,2,3,4,5];
         this.playerList = [];
         this.roomCard = undefined;
+        this.roomscore = 0;
+        this.leader = 0;
+        this.timeTimeout = undefined;
+        this.isOne = true;
     }
 
-    getRoomInfo()
-    {
-
-    }
 
     //进入房间的的玩家保存到本地房间信息
     async addPlayer(UserID, client) {
@@ -72,6 +72,7 @@ class Room{
         }
     }
 
+    //player脚本调用的准备
     StartGameOrSyncReadyMessage(player)
     {
         player.readyState = true;
@@ -85,6 +86,68 @@ class Room{
             this.syncPlayerReadyOkMessage(player);
         }
     }
+
+
+    //同步玩家弃牌
+    onAbandon(player)
+    {
+        player.isAbandon = true;
+        let playerInfoList = [];
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let playerInfo = this.playerList[i].getPlayerAbandon();
+            playerInfoList.push(playerInfo);
+        }
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_abandon",playerInfoList,player.client);
+        }
+        this.roomWin()
+    }
+
+
+    //弃牌胜利
+    roomWin()
+    {
+        let index = 0;
+        let noAbandon = undefined;
+        for (let i = 0; i < this.playerList.length; i++) {
+
+            if (this.playerList[i].getIsAbandon())
+            {
+                index++;
+            }
+            else
+            {
+                console.log("进入为弃牌的if")
+                noAbandon = this.playerList[i]
+            }
+        }
+        console.log("房间内弃牌的",index);
+        console.log("房间内所有人",this.playerList.length-1);
+        console.log("房间内noAbandon",noAbandon);
+
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            if (index >= this.playerList.length-1 && noAbandon)
+            {
+                global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_win",{data:"结束"},player.client);
+                //给胜利者加分
+                noAbandon.score += this.roomscore;
+                this.roomscore = 0;
+                //同步给所有人
+                this.sendScore();
+                this.current_numbers += 1;
+                //给所有人发送当前是第几局
+                this.sendGameNum()
+
+
+            }
+        }
+    }
+
 
     //同步玩家准备状态
     syncPlayerReadyOkMessage(player)
@@ -131,9 +194,21 @@ class Room{
     }
 
 
-    SendCard(player)
+    //发牌
+    SendCard()
     {
+        let carde0 = this.roomCard.shift();
+        let carde1 = this.roomCard.shift();
+        let carde2 = this.roomCard.shift();
 
+        let data =
+        {
+            carde0:carde0,
+            carde1:carde1,
+            carde2:carde2,
+        }
+        console.log("<房间内的牌》》",this.roomCard)
+        return data
     }
 
     洗牌
@@ -172,6 +247,7 @@ class Room{
 
     }
 
+    //随机数组
     Random(arr)
     {
         arr.sort(
@@ -188,25 +264,20 @@ class Room{
 
 
 
-
+    //是否开始游戏
     isStartGame()
     {
         let res = true;
-        let index = 0;
         this.playerList.forEach((player)=>{
             if (!player.readyState)
             {
                 res = false;
             }
-            else
-            {
-                index++;
-            }
-
         })
         return res;
     }
 
+    //一人时无法开始
     isStartGameIndex()
     {
         let index = 0;
@@ -219,16 +290,132 @@ class Room{
         return index;
     }
 
+    /*  1.全部准备了
+        2.随机牌型
+        3.本房间储存当前随机的牌型
+        4.扣除所有玩家入场分数
+        5.把扣除的玩家分数存到本房间分数内，给到胜利者
+        6.给所有玩家发牌
+
+        */
     syncStartGame()
     {
+        //打乱牌堆
         let cardarr =  this.Shuffle();
+        //存储当前方房间的牌
         this.roomCard = cardarr;
-        console.log("<房间内的牌》》",this.roomCard)
-        this.playerList.forEach((player)=>{
-            global.PSZServerMgr.PSZServerMgr.sendMessage("start_game",{data:"开始游戏"},player.client);
+        //同步分数
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            this.playerList[i].score -= 10;
+        }
+        this.sendScore()
 
+        //给每个玩家发牌和发送和开始消息
+        this.playerList.forEach((player)=>{
+            let data = this.SendCard();
+            //保存每个玩家的牌
+            player.myCarde = data;
+            //保存入场条件   每个人十分，结束后归胜利者所有
+            this.roomscore += 10;
+            global.PSZServerMgr.PSZServerMgr.sendMessage("start_game",data,player.client);
         })
-        // this.allReadyOk()
+
+        this.leader = this.onRandomLeader();
+        this.sendPlayerShowUI()
+        this.isOne = false;
+        console.log("<发牌结束后的牌堆》》",this.roomCard)
+    }
+
+
+    //给玩家发送消息显示按钮
+    sendPlayerShowUI()
+    {
+        let data
+        if (this.isOne)
+        {
+            data =
+                {
+                    isOne : true,
+                    time : 30,
+                }
+        }
+        else
+        {
+            data =
+                {
+                    isOne : false,
+                    time : 30,
+                }
+        }
+
+        console.log("房间内的人数>>>>>>>>>",this.playerList.length)
+
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            if(i == this.leader)
+            {
+                global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
+            }
+        }
+
+    }
+
+    //定时器
+    onTimeout()
+    {
+        this.timeTimeout = setTimeout(this.sendPlayerShowUI,3000);
+        //window.clearTimeout(t1);//去掉定时器
+
+
+
+
+
+    }
+
+
+    //随机庄家
+    onRandomLeader() {
+        // let random =  Math.floor(Math.random() * (0 - this.playerList.length + 1) + 1);
+        let random = this.getRandomPlus(0,this.playerList.length-1);
+        console.log("随机的数是>>>>>>>>",random)
+        return random;
+    }
+    //   获得两个数之间的随机整数(可包含最大值max)
+    getRandomPlus(min,max){
+        return Math.floor(Math.random()*(max-min+1)+min);
+    }
+    //同步分数
+    sendScore()
+    {
+        let playerInfoList = [];
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let playerInfo = this.playerList[i].getPlayerScore();
+            playerInfoList.push(playerInfo);
+        }
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_score",playerInfoList,player.client);
+        }
+
+    }
+
+    sendGameNum()
+    {
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            let data =
+                {
+                    game_numbers:this.gameNumbers,
+                    current_numbers:this.current_numbers,
+                }
+            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_game_num",data,player.client);
+        }
+
     }
 
 
@@ -254,6 +441,9 @@ class Room{
         }
 
     }
+
+
+
 
 
 }
