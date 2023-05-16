@@ -46,6 +46,9 @@ export class PSZ_SceneMgr extends Component {
     //下注界面
     @property(Node)
     downNode:Node = null;
+    //加注界面
+    @property(Node)
+    addNode:Node = null;
 
 
 
@@ -55,6 +58,14 @@ export class PSZ_SceneMgr extends Component {
     ZHUNBEIIMAGE = "ready_ok";
     //离线image
     LIXIAN = "offline";
+    //所下分数
+    SUOXIAFENSHU = "currentScoreLabel";
+    //所下分数父物体
+    SUOXIAFENSHUFUWUTI = "bg_xiazhu";
+    //玩家分数
+    WANJIAFENSHU = "scoreLabel";
+    //玩家分数父物体
+    WANJIAFENSHUFUWUTI = "touxiangyuanjiao";
 
     //牌的路径
     PAIDELUJING = "img/games/PSZ/card/";
@@ -78,6 +89,9 @@ export class PSZ_SceneMgr extends Component {
     downScore:number = 0;
 
 
+    //当前最小注数
+
+    minAddScore = 0;
 
     @property(Prefab)
     cardNodeprefab:Prefab = null;
@@ -110,6 +124,7 @@ export class PSZ_SceneMgr extends Component {
         globalThis._eventTarget.on("start_game",this.onStartGame,this);
         globalThis._eventTarget.on("sync_game_num",this.onUpdateCurrent,this);
         globalThis._eventTarget.on("show_ui",this.onShowUI,this);
+        globalThis._eventTarget.on("min_add_score",this.onMinAddScore,this);
 
     }
   
@@ -204,7 +219,7 @@ export class PSZ_SceneMgr extends Component {
         let headNode = instantiate(this.headNodeprefab)
         this.instantiateHeadNode[seatIndex] = headNode;
         seatNode.addChild(headNode);
-        let nameLabel = headNode.getChildByName("touxiangyuanjiao").getChildByName("NameLabel").getComponent(Label);
+        let nameLabel = headNode.getChildByName(this.WANJIAFENSHUFUWUTI).getChildByName("NameLabel").getComponent(Label);
         nameLabel.string = userData.user_name;
         this.GengXinFenShu(seatIndex,userData.user_score)
     }
@@ -305,7 +320,13 @@ export class PSZ_SceneMgr extends Component {
     //更新分数
     GengXinFenShu(index,scoresum)
     {
-        let scoreLabel = this.instantiateHeadNode[index].getChildByName("touxiangyuanjiao").getChildByName("scoreLabel").getComponent(Label);
+        let scoreLabel = this.instantiateHeadNode[index].getChildByName(this.WANJIAFENSHUFUWUTI).getChildByName(this.WANJIAFENSHU).getComponent(Label);
+        scoreLabel.string = scoresum;
+    }
+    //更新所下分数
+    GengXinSuoXiaFenShu(index,scoresum)
+    {
+        let scoreLabel = this.instantiateHeadNode[index].getChildByName(this.SUOXIAFENSHUFUWUTI).getChildByName(this.SUOXIAFENSHU).getComponent(Label);
         scoreLabel.string = scoresum;
     }
 
@@ -317,6 +338,7 @@ export class PSZ_SceneMgr extends Component {
             let index = this.getLocalIndex(data.user_seatIndex,globalThis._userInfo.SeataIndex,6);
             console.log("index",index)
             this.GengXinFenShu(index,data.user_score);
+            this.GengXinSuoXiaFenShu(index,data.user_playerDownScore);
         }
 
     }
@@ -349,13 +371,47 @@ export class PSZ_SceneMgr extends Component {
     //加注按钮事件
     onAddGoldClick()
     {
+        this.SetNodeActive(this.addNode,true);
+    }
+    //加注
+    onAddScoreClose(target,arg)
+    {
+        this.downScore = Number(arg);
+        console.log("下注的分数>>>>>>>>"+this.downScore)
+        // this.SetNodeActive(this.downNode,false);
+    }
+    //加注最小值
+    onMinAddScore(data)
+    {
+        this.minAddScore = data;
+    }
 
+    onAddScoreNodeClose()
+    {
+        this.SetNodeActive(this.downNode,false);
+    }
+    //加注面板确定
+    onAddScoreEnter()
+    {
+        if(this.minAddScore < this.downScore )
+        {
+            globalThis._PSZClientMgr._sendMessage("add_score",{data:this.downScore})
+        }
+        else
+        {
+            console.log("<PSZ------当前加注分数比上家小，无法加注>")
+        }
+    }
+    //加注关闭
+    onAddNodeClose()
+    {
+        this.SetNodeActive(this.downNode,false);
     }
 
     //跟注按钮事件
     onHeelGoldClick()
     {
-
+        globalThis._PSZClientMgr._sendMessage("heel_score",{userID:globalThis._userInfo.user_id})
     }
 
     //下注按钮事件
@@ -363,6 +419,26 @@ export class PSZ_SceneMgr extends Component {
     {
         this.SetNodeActive(this.downNode,true);
     }
+
+    //关闭
+    onDownNodeClose()
+    {
+        this.SetNodeActive(this.downNode,false);
+    }
+    //点击分数
+    onDownScoreClose(target,arg)
+    {
+        this.downScore = Number(arg);
+        console.log("下注的分数>>>>>>>>"+this.downScore)
+        // this.SetNodeActive(this.downNode,false);
+    }
+    //下注面板确定
+    onDownEnter()
+    {
+        globalThis._PSZClientMgr._sendMessage("down_score",{data:this.downScore})
+    }
+
+
     //显示玩家可控制的ui
     onShowUI(data)
     {
@@ -377,8 +453,8 @@ export class PSZ_SceneMgr extends Component {
         }
         else
         { 
-            //下注
-            this.SetNodeActive(this.downGoldButton,true);
+            // //下注
+            // this.SetNodeActive(this.downGoldButton,true);
             //跟注
             this.SetNodeActive(this.heelGoldButton,true);
             //加注
@@ -390,18 +466,8 @@ export class PSZ_SceneMgr extends Component {
       
     }
 
-
-    onDownNodeClose()
-    {
-        this.SetNodeActive(this.downNode,false);
-    }
-
-    onDownScoreClose(target,arg)
-    {
-        this.downScore = Number(arg);
-        console.log("下注的分数>>>>>>>>"+this.downScore)
-        this.SetNodeActive(this.downNode,false);
-    }
+  
+    
 
     update(dt: number) {
 
@@ -418,7 +484,15 @@ export class PSZ_SceneMgr extends Component {
             {
                 this.isTime = false;
                 //倒计时结束自动下注
-
+                this.SetNodeActive(this.timeNode,false);
+                //下注
+                this.SetNodeActive(this.downGoldButton,false);
+                //跟注
+                this.SetNodeActive(this.heelGoldButton,false);
+                //加注
+                this.SetNodeActive(this.addGoldButton,false);
+                //比牌
+                this.SetNodeActive(this.compareNode,true);
             }
 
         } 

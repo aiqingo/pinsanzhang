@@ -11,6 +11,7 @@ class Player {
         this.readyState = false;
         this.receviedPlayerMessage(this.client)
         this.score = playerData.user_score;
+        this.down_score = 0;
         this.myCarde = undefined;
         this.isAbandon = false
     }
@@ -33,8 +34,10 @@ class Player {
         return {
             user_score:this.score,
             user_seatIndex :this.seatIndex,
+            user_playerDownScore : this.down_score,
         }
     }
+
     //获取准备
     getPlayerReadyState()
     {
@@ -69,6 +72,16 @@ class Player {
                 case "abandon":
                     this.room.onAbandon(this);
                     break;
+                case "down_score":
+                    this.room.onDownScore(data,this);
+                    break;
+                case "heel_score":
+                    this.room.onHeelScore(this);
+                    break;
+                case "add_score":
+                    this.room.onAddScore(data,this);
+                    break;
+
                 default:
                     break;
 

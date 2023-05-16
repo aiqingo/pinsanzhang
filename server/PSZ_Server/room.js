@@ -11,12 +11,22 @@ class Room{
         console.log("玩家id= ",this.createID);
         console.log("房间id= ",this.roomID);
         this.seatIndexList = [0,1,2,3,4,5];
+        //当前房间内的玩家
         this.playerList = [];
+        //当前房间内的牌堆
         this.roomCard = undefined;
+        //当前房间的分数
         this.roomscore = 0;
+        //当前操作的玩家
         this.leader = 0;
+        //延迟存储的
         this.timeTimeout = undefined;
+        //第一轮吗
         this.isOne = true;
+        //延迟多少秒
+        this.waitTime = 30;
+        //跟注的分数
+        this.heelscore = 0;
     }
 
 
@@ -142,6 +152,8 @@ class Room{
                 this.current_numbers += 1;
                 //给所有人发送当前是第几局
                 this.sendGameNum()
+                //去掉定时器
+                clearTimeout(this.timeTimeout);
 
 
             }
@@ -321,16 +333,86 @@ class Room{
             global.PSZServerMgr.PSZServerMgr.sendMessage("start_game",data,player.client);
         })
 
+        // this.playerNum = this.playerList.length;
         this.leader = this.onRandomLeader();
-        this.sendPlayerShowUI()
+        this.sendPlayerShowUI();
+        this.onTimeout();
         this.isOne = false;
         console.log("<发牌结束后的牌堆》》",this.roomCard)
     }
 
 
     //给玩家发送消息显示按钮
+
+    //定时器
+    onTimeout()
+    {
+        // this.timeTimeout = setTimeout(this.sendPlayerShowUI,3000);
+
+        this.timeTimeout = setInterval(() => {
+            console.log("进入是哪位玩家操作的方法>>>>>>>");
+            let data
+            if (this.isOne)
+            {
+                data =
+                    {
+                        isOne : true,
+                        time : 30,
+                    }
+            }
+            else
+            {
+                data =
+                    {
+                        isOne : false,
+                        time : 30,
+                    }
+            }
+
+            console.log("定时30s房间内的人数>>>>>>>>>",this.playerList.length)
+            console.log("定时30s随机的庄家>>>>>>>>",this.leader)
+            // console.log(this.playerList)
+
+            for(let i = 0 ;i < this.playerList.length;i++)
+
+            {
+                if(i == this.leader)
+                {
+                    let player = this.playerList[i];
+                    if (player.isAbandon == true)
+                    {
+                        // global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
+                        this.leader += 1;
+                        this.waitTime = 0;
+                        if(this.leader == this.playerList.length)
+                        {
+                            this.leader = 0;
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
+                        this.leader += 1;
+                        this.waitTime = 30000;
+                        if(this.leader == this.playerList.length)
+                        {
+                            this.leader = 0;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            //30s
+        },this.waitTime);
+        //window.clearTimeout(t1);//去掉定时器
+
+    }
+    //第一轮玩家显示ui
     sendPlayerShowUI()
     {
+        console.log("进入是哪位玩家操作的方法>>>>>>>")
         let data
         if (this.isOne)
         {
@@ -349,30 +431,92 @@ class Room{
                 }
         }
 
-        console.log("房间内的人数>>>>>>>>>",this.playerList.length)
+        // console.log("房间内的人数>>>>>>>>>",this.playerList.length)
+        console.log("随机的庄家>>>>>>>>>",this.leader)
+        // console.log(this.playerList)
 
         for(let i = 0 ;i < this.playerList.length;i++)
         {
-            let player = this.playerList[i];
             if(i == this.leader)
             {
-                global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
+                let player = this.playerList[i];
+                if (player.isAbandon == true)
+                {
+                    // global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
+                    this.leader += 1;
+                    this.waitTime = 0;
+                    if(this.leader == this.playerList.length)
+                    {
+                        this.leader = 0;
+                    }
+                    break;
+                }
+                else
+                {
+                    global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
+                    this.leader += 1;
+                    this.waitTime = 30000;
+                    if(this.leader == this.playerList.length)
+                    {
+                        this.leader = 0;
+                    }
+                    break;
+                }
             }
         }
 
     }
 
-    //定时器
-    onTimeout()
+    //下注第一位玩家点击下注
+    onDownScore(data,player)
     {
-        this.timeTimeout = setTimeout(this.sendPlayerShowUI,3000);
-        //window.clearTimeout(t1);//去掉定时器
-
-
-
-
-
+        console.log("下注分数>>>>>>>>>>>>>>>>>>>>",data)
+        this.heelscore = data.data;
+        this.roomscore += data.data;
+        player.down_score += data.data;
+        player.score -= data.data;
+        console.log("当前玩家所下分数>>>>>>>>>>>>",player.down_score)
+        this.onMinAddScore();
+        this.sendScore();
+        console.log("房间内的分数>>>>>>>>>>>>>>>>>>>>>>>>",this.roomscore)
     }
+    //跟注的
+    onHeelScore(player)
+    {
+        console.log("跟注分数>>>>>>>>>>>>>>>>>>>>")
+        this.roomscore += this.heelscore;
+        player.down_score += this.heelscore;
+        player.score -= this.heelscore;
+        this.sendScore();
+        console.log("当前玩家所下分数>>>>>>>>>>>>",player.down_score)
+        console.log("房间内的分数>>>>>>>>>>>>>>>>>>>>>>>>",this.roomscore)
+    }
+    onAddScore(data,player)
+    {
+        console.log("加注分数>>>>>>>>>>>>>>>>>>>>",data)
+        this.heelscore = data.data;
+        this.roomscore += data.data;
+        player.down_score += data.data;
+        player.score -= data.data;
+        console.log("当前玩家所下分数>>>>>>>>>>>>",player.down_score)
+        this.onMinAddScore();
+        this.sendScore();
+        console.log("房间内的分数>>>>>>>>>>>>>>>>>>>>>>>>",this.roomscore)
+    }
+
+
+    //加注最低分同步
+    onMinAddScore()
+    {
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            global.PSZServerMgr.PSZServerMgr.sendMessage("min_add_score",this.heelscore,player.client);
+        }
+    }
+
+
+
 
 
     //随机庄家
@@ -402,7 +546,7 @@ class Room{
         }
 
     }
-
+    //同步游戏局数
     sendGameNum()
     {
         for(let i = 0 ;i < this.playerList.length;i++)
