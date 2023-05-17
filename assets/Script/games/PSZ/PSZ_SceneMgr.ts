@@ -245,10 +245,20 @@ export class PSZ_SceneMgr extends Component {
     {
         let lcaolnode = this.instantiateCardNode[0].getChildByName(this.QIPAI);
         this.SetNodeActive(lcaolnode,true);
-
-        //弃牌后关闭按钮点击功能
+        //倒计时面板
+        this.SetNodeActive(this.timeNode,false);
+        //取消倒计时
+        this.isTime = false;
+        //比牌
         this.compareNode.getComponent(Button).interactable = false;
+        //弃牌
         this.abandonNode.getComponent(Button).interactable = false;
+        //下注
+        this.addGoldButton.getComponent(Button).interactable = false;
+        //跟注
+        this.heelGoldButton.getComponent(Button).interactable = false;
+        //加注
+        this.downGoldButton.getComponent(Button).interactable = false;
 
         globalThis._PSZClientMgr._sendMessage("abandon",{userID:globalThis._userInfo.user_id})
     }
@@ -298,7 +308,7 @@ export class PSZ_SceneMgr extends Component {
         this.XianShiPaiMian(this.card1,data.carde1);
         this.XianShiPaiMian(this.card2,data.carde2);
         //显示弃牌按钮
-        this.SetNodeActive(this.abandonNode,true);
+        this.SetNodeActive(this.abandonNode,false);
         // this.SetNodeActive(this.compareNode,true);
     }
 
@@ -368,34 +378,54 @@ export class PSZ_SceneMgr extends Component {
         this.gameCount.string = data.current_numbers + "/" + data.game_numbers;
     }
 
+    /*---------------------加注------------------------- */
     //加注按钮事件
     onAddGoldClick()
     {
+        // console.log("<加注面吧--------------------->")
         this.SetNodeActive(this.addNode,true);
     }
-    //加注
-    onAddScoreClose(target,arg)
-    {
-        this.downScore = Number(arg);
-        console.log("下注的分数>>>>>>>>"+this.downScore)
-        // this.SetNodeActive(this.downNode,false);
-    }
+    // //加注
+    // onAddScoreClose(target,arg)
+    // {
+    //     this.downScore = Number(arg);
+    //     console.log("下注的分数>>>>>>>>"+this.downScore)
+    //     // this.SetNodeActive(this.downNode,false);
+    // }
     //加注最小值
     onMinAddScore(data)
     {
         this.minAddScore = data;
     }
-
+    //加注面板关闭
     onAddScoreNodeClose()
     {
-        this.SetNodeActive(this.downNode,false);
+        this.SetNodeActive(this.addNode,false);
     }
     //加注面板确定
     onAddScoreEnter()
     {
+        console.log("<当前加注不低于>",this.minAddScore)
+        console.log("<当前分数>",this.downScore)
         if(this.minAddScore < this.downScore )
         {
             globalThis._PSZClientMgr._sendMessage("add_score",{data:this.downScore})
+            //取消倒计时
+            this.isTime = false;
+            //弃牌
+            this.SetNodeActive(this.abandonNode,true);
+            //下注面板
+            this.SetNodeActive(this.addNode,false);
+            //倒计时面板
+            this.SetNodeActive(this.timeNode,false);
+            //下注
+            this.SetNodeActive(this.downGoldButton,false);
+            //跟注
+            this.SetNodeActive(this.heelGoldButton,false);
+            //加注
+            this.SetNodeActive(this.addGoldButton,false);
+            //比牌
+            this.SetNodeActive(this.compareNode,false);
         }
         else
         {
@@ -405,21 +435,42 @@ export class PSZ_SceneMgr extends Component {
     //加注关闭
     onAddNodeClose()
     {
-        this.SetNodeActive(this.downNode,false);
+        this.SetNodeActive(this.addNode,false);
     }
+    /*---------------------加注------------------------- */
 
+
+    /*---------------------跟注------------------------- */
     //跟注按钮事件
     onHeelGoldClick()
     {
         globalThis._PSZClientMgr._sendMessage("heel_score",{userID:globalThis._userInfo.user_id})
+        //取消倒计时
+        this.isTime = false;
+        //弃牌
+        this.SetNodeActive(this.abandonNode,true);
+        //下注面板
+        this.SetNodeActive(this.downNode,false);
+        //倒计时面板
+        this.SetNodeActive(this.timeNode,false);
+        //下注
+        this.SetNodeActive(this.downGoldButton,false);
+        //跟注
+        this.SetNodeActive(this.heelGoldButton,false);
+        //加注
+        this.SetNodeActive(this.addGoldButton,false);
+        //比牌
+        this.SetNodeActive(this.compareNode,false);
     }
-
+    
+    /*-----------------------跟注----------------------- */
+    /*------------------------下注---------------------- */
     //下注按钮事件
     onDownGoldClick()
     {
         this.SetNodeActive(this.downNode,true);
+        
     }
-
     //关闭
     onDownNodeClose()
     {
@@ -436,7 +487,24 @@ export class PSZ_SceneMgr extends Component {
     onDownEnter()
     {
         globalThis._PSZClientMgr._sendMessage("down_score",{data:this.downScore})
+        //取消倒计时
+        this.isTime = false;
+        //弃牌
+        this.SetNodeActive(this.abandonNode,true);
+        //下注面板
+        this.SetNodeActive(this.downNode,false);
+        //倒计时面板
+        this.SetNodeActive(this.timeNode,false);
+        //下注
+        this.SetNodeActive(this.downGoldButton,false);
+        //跟注
+        this.SetNodeActive(this.heelGoldButton,false);
+        //加注
+        this.SetNodeActive(this.addGoldButton,false);
+        //比牌
+        this.SetNodeActive(this.compareNode,false);
     }
+    /*-----------------------下注----------------------- */
 
 
     //显示玩家可控制的ui
@@ -450,11 +518,15 @@ export class PSZ_SceneMgr extends Component {
         {
             //下注
             this.SetNodeActive(this.downGoldButton,true);
+            //弃牌
+            this.SetNodeActive(this.abandonNode,false);
         }
         else
         { 
             // //下注
             // this.SetNodeActive(this.downGoldButton,true);
+            //弃牌
+            this.SetNodeActive(this.abandonNode,true);
             //跟注
             this.SetNodeActive(this.heelGoldButton,true);
             //加注
@@ -483,7 +555,9 @@ export class PSZ_SceneMgr extends Component {
             if(this.Time <= 0 )
             {
                 this.isTime = false;
-                //倒计时结束自动下注
+                //倒计时结束自动下注  
+                //30S到了强行跟注
+                // globalThis._PSZClientMgr._sendMessage("heel_score",{userID:globalThis._userInfo.user_id})
                 this.SetNodeActive(this.timeNode,false);
                 //下注
                 this.SetNodeActive(this.downGoldButton,false);
@@ -492,7 +566,13 @@ export class PSZ_SceneMgr extends Component {
                 //加注
                 this.SetNodeActive(this.addGoldButton,false);
                 //比牌
-                this.SetNodeActive(this.compareNode,true);
+                this.SetNodeActive(this.compareNode,false);
+                //下注界面
+                this.SetNodeActive(this.downNode,false);
+                //加注界面
+                this.SetNodeActive(this.addNode,false);
+                //弃牌
+                this.SetNodeActive(this.abandonNode,true);
             }
 
         } 

@@ -35,6 +35,12 @@ export class loginSceneMgr extends Component {
             case "3":
                 senddata = 777777;
                 break;
+            case "4":
+                senddata = 888888;
+                break;
+            case "5":
+                senddata = 999999;
+                break;
             default:
                 break;
         }

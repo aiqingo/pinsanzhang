@@ -9070,7 +9070,7 @@
     },
     "component": "",
     "_componentId": "5f79eOao7JLJ5CShAe2O4jv",
-    "handler": "onAddScoreClose",
+    "handler": "onAddScoreEnter",
     "customEventData": ""
   },
   {
@@ -13135,7 +13135,9 @@
     "downNode": {
       "__id__": 106
     },
-    "addNode": null,
+    "addNode": {
+      "__id__": 228
+    },
     "cardNodeprefab": {
       "__uuid__": "fd5aecd4-1167-46ee-9246-80d2e49efb30",
       "__expectedType__": "cc.Prefab"

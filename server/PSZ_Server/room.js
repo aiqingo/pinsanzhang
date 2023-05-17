@@ -113,7 +113,11 @@ class Room{
             let player = this.playerList[i];
             global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_abandon",playerInfoList,player.client);
         }
-        this.roomWin()
+        this.StoTime();
+        this.timeTimeout = null
+        this.sendPlayerShowUI();
+        this.onTimeout();
+        this.roomWin();
     }
 
 
@@ -152,12 +156,10 @@ class Room{
                 this.current_numbers += 1;
                 //给所有人发送当前是第几局
                 this.sendGameNum()
-                //去掉定时器
-                clearTimeout(this.timeTimeout);
-
-
             }
         }
+        //去掉定时器
+        this.StoTime();
     }
 
 
@@ -219,7 +221,7 @@ class Room{
             carde1:carde1,
             carde2:carde2,
         }
-        console.log("<房间内的牌》》",this.roomCard)
+        // console.log("<房间内的牌》》",this.roomCard)
         return data
     }
 
@@ -253,7 +255,7 @@ class Room{
 
         let  arr = this.Random(this.Random(this.Random(pokers)));
 
-        console.log("<随机牌----->",arr)
+        // console.log("<随机牌----->",arr)
 
         return  arr;
 
@@ -320,6 +322,7 @@ class Room{
         for(let i = 0 ;i < this.playerList.length;i++)
         {
             this.playerList[i].score -= 10;
+            this.playerList[i].down_score += 10;
         }
         this.sendScore()
 
@@ -338,7 +341,7 @@ class Room{
         this.sendPlayerShowUI();
         this.onTimeout();
         this.isOne = false;
-        console.log("<发牌结束后的牌堆》》",this.roomCard)
+        // console.log("<发牌结束后的牌堆》》",this.roomCard)
     }
 
 
@@ -348,9 +351,10 @@ class Room{
     onTimeout()
     {
         // this.timeTimeout = setTimeout(this.sendPlayerShowUI,3000);
+        //执行一次的定时器setTimeout    多次定时器setInterval
 
         this.timeTimeout = setInterval(() => {
-            console.log("进入是哪位玩家操作的方法>>>>>>>");
+            // console.log("进入是哪位玩家操作的方法>>>>>>>");
             let data
             if (this.isOne)
             {
@@ -368,9 +372,48 @@ class Room{
                         time : 30,
                     }
             }
+            //上一次没有操作的玩家
+            let index = this.leader
+            if (index == 0)
+            {
+                for(let i = 0 ;i < this.playerList.length;i++)
+                {
+                    let player = this.playerList[i];
+                    if (player.isAbandon == false)
+                    {
+                        index = i;
+                    }
+                }
+            }
+            else
+            {
+                index -= 1;
 
-            console.log("定时30s房间内的人数>>>>>>>>>",this.playerList.length)
-            console.log("定时30s随机的庄家>>>>>>>>",this.leader)
+                //0
+                let player = this.playerList[index];
+                if (player.isAbandon == true) {
+                    if (index == 0)
+                    {
+                        for(let i = 0 ;i < this.playerList.length;i++)
+                        {
+                            let player = this.playerList[i];
+                            if (player.isAbandon == false)
+                            {
+                                index = i;
+                            }
+                        }
+                    }
+                }
+
+            }
+            //玩家不操作是扣除分数
+            this.roomscore += this.heelscore;
+            this.playerList[index].down_score += this.heelscore;
+            this.playerList[index].score -= this.heelscore;
+            this.sendScore();
+
+            // console.log("定时30s房间内的人数>>>>>>>>>",this.playerList.length)
+            // console.log("定时30s随机的庄家>>>>>>>>",this.leader)
             // console.log(this.playerList)
 
             for(let i = 0 ;i < this.playerList.length;i++)
@@ -379,6 +422,9 @@ class Room{
                 if(i == this.leader)
                 {
                     let player = this.playerList[i];
+                    //前端没有操作或者掉线后端强行跟注
+
+
                     if (player.isAbandon == true)
                     {
                         // global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
@@ -407,8 +453,15 @@ class Room{
             //30s
         },this.waitTime);
         //window.clearTimeout(t1);//去掉定时器
-
     }
+
+    //暂停定时器
+    StoTime()
+    {
+        clearTimeout(this.timeTimeout);//去掉定时器
+    }
+
+
     //第一轮玩家显示ui
     sendPlayerShowUI()
     {
@@ -432,7 +485,7 @@ class Room{
         }
 
         // console.log("房间内的人数>>>>>>>>>",this.playerList.length)
-        console.log("随机的庄家>>>>>>>>>",this.leader)
+        // console.log("随机的庄家>>>>>>>>>",this.leader)
         // console.log(this.playerList)
 
         for(let i = 0 ;i < this.playerList.length;i++)
@@ -467,41 +520,48 @@ class Room{
 
     }
 
+
+    QieHuanWanJia()
+    {
+        this.onMinAddScore();
+        this.sendScore();
+        this.StoTime();
+        this.timeTimeout = null;
+        this.sendPlayerShowUI();
+        this.onTimeout();
+        console.log("当前玩家所下分数>>>>>>>>>>>>",player.down_score);
+        console.log("房间内的分数>>>>>>>>>>>>>>>>>>>>>>>>",this.roomscore);
+    }
+
+
     //下注第一位玩家点击下注
     onDownScore(data,player)
     {
-        console.log("下注分数>>>>>>>>>>>>>>>>>>>>",data)
+        console.log("下注分数>>>>>>>>>>>>>>>>>>>>",data);
         this.heelscore = data.data;
         this.roomscore += data.data;
         player.down_score += data.data;
         player.score -= data.data;
-        console.log("当前玩家所下分数>>>>>>>>>>>>",player.down_score)
-        this.onMinAddScore();
-        this.sendScore();
-        console.log("房间内的分数>>>>>>>>>>>>>>>>>>>>>>>>",this.roomscore)
+        this.QieHuanWanJia();
     }
-    //跟注的
+    //跟注的响应
     onHeelScore(player)
     {
-        console.log("跟注分数>>>>>>>>>>>>>>>>>>>>")
+        console.log("跟注分数>>>>>>>>>>>>>>>>>>>>",this.heelscore);
         this.roomscore += this.heelscore;
         player.down_score += this.heelscore;
         player.score -= this.heelscore;
-        this.sendScore();
-        console.log("当前玩家所下分数>>>>>>>>>>>>",player.down_score)
-        console.log("房间内的分数>>>>>>>>>>>>>>>>>>>>>>>>",this.roomscore)
+        this.QieHuanWanJia();
     }
+    //加注响应
     onAddScore(data,player)
     {
-        console.log("加注分数>>>>>>>>>>>>>>>>>>>>",data)
+        console.log("加注分数>>>>>>>>>>>>>>>>>>>>",data);
         this.heelscore = data.data;
         this.roomscore += data.data;
         player.down_score += data.data;
         player.score -= data.data;
-        console.log("当前玩家所下分数>>>>>>>>>>>>",player.down_score)
-        this.onMinAddScore();
-        this.sendScore();
-        console.log("房间内的分数>>>>>>>>>>>>>>>>>>>>>>>>",this.roomscore)
+        this.QieHuanWanJia();
     }
 
 
@@ -523,7 +583,7 @@ class Room{
     onRandomLeader() {
         // let random =  Math.floor(Math.random() * (0 - this.playerList.length + 1) + 1);
         let random = this.getRandomPlus(0,this.playerList.length-1);
-        console.log("随机的数是>>>>>>>>",random)
+        // console.log("随机的数是>>>>>>>>",random)
         return random;
     }
     //   获得两个数之间的随机整数(可包含最大值max)
