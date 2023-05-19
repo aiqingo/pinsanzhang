@@ -1106,7 +1106,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 523.186,
-      "y": -112.76,
+      "y": -74.442,
       "z": 0
     },
     "_lrot": {
@@ -13205,7 +13205,7 @@
     "asset": null,
     "fileId": "6fc753e7-cc66-453c-aa26-6b4b5e93167e",
     "instance": null,
-    "targetOverrides": null
+    "targetOverrides": []
   },
   {
     "__type__": "cc.SceneGlobals",

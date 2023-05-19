@@ -24,12 +24,18 @@ export class PSZ_SceneMgr extends Component {
     //比牌node
     @property(Node)
     compareNode:Node = null;
+
+
+    //是否开启比牌
+    isBiPai = false;
+
     //弃牌node
     @property(Node)
     abandonNode:Node = null;
     //加注
     @property(Node)
     addGoldButton:Node = null;
+ 
     //跟注
     @property(Node)
     heelGoldButton:Node = null;
@@ -100,6 +106,8 @@ export class PSZ_SceneMgr extends Component {
     //当前房间牌gameobgect
     private instantiateCardNode:Node[] = [] ;
 
+
+
     start() {
         this._init();
         this.SetNodeActive(this.abandonNode,false);
@@ -125,6 +133,8 @@ export class PSZ_SceneMgr extends Component {
         globalThis._eventTarget.on("sync_game_num",this.onUpdateCurrent,this);
         globalThis._eventTarget.on("show_ui",this.onShowUI,this);
         globalThis._eventTarget.on("min_add_score",this.onMinAddScore,this);
+        globalThis._eventTarget.on("show_loser_carde",this.onShowLoserCaede,this);
+        
 
     }
   
@@ -208,7 +218,7 @@ export class PSZ_SceneMgr extends Component {
             }
         }
     }
-
+    //创建玩家头像
     updataUserInfo(seatIndex,userData)
     {
         let seatNode = this.seatList[seatIndex];
@@ -218,12 +228,43 @@ export class PSZ_SceneMgr extends Component {
         //创建玩家头像
         let headNode = instantiate(this.headNodeprefab)
         this.instantiateHeadNode[seatIndex] = headNode;
+        let button =  headNode.getChildByName("VS");
+        button.active = false;
         seatNode.addChild(headNode);
         let nameLabel = headNode.getChildByName(this.WANJIAFENSHUFUWUTI).getChildByName("NameLabel").getComponent(Label);
         nameLabel.string = userData.user_name;
-        this.GengXinFenShu(seatIndex,userData.user_score)
-    }
+        this.GengXinFenShu(seatIndex,userData.user_score);
+        button.on("click", event=>{
+            console.log("<当前的serverindex>",userData.user_seatIndex);
+            globalThis._PSZClientMgr._sendMessage("compare",{index:userData.user_seatIndex})
+            for (let i = 0; i < this.instantiateHeadNode.length; i++)
+            {
+                if (this.instantiateHeadNode[i] != undefined)
+                {
+                    this.instantiateHeadNode[i].getChildByName("VS").active = false;
+                    this.isBiPai = false
+                }
+            }
+            this.SetNodeActive(this.timeNode,false);
+            //下注
+            this.SetNodeActive(this.downGoldButton,false);
+            //跟注
+            this.SetNodeActive(this.heelGoldButton,false);
+            //加注
+            this.SetNodeActive(this.addGoldButton,false);
+            //比牌
+            this.SetNodeActive(this.compareNode,false);
+            //下注界面
+            this.SetNodeActive(this.downNode,false);
+            //加注界面
+            this.SetNodeActive(this.addNode,false);
+            //弃牌
+            this.SetNodeActive(this.abandonNode,false);
 
+        });
+
+    }
+    //算客户端位置
     getLocalIndex(otherIndex,thisIndex,playernumbers)
     {
         let ret = (otherIndex-thisIndex + playernumbers)%playernumbers;
@@ -243,6 +284,8 @@ export class PSZ_SceneMgr extends Component {
     //弃牌
     onAbandon()
     {
+        
+        this.instantiateCardNode[0].getChildByName(this.QIPAI).active = false;
         let lcaolnode = this.instantiateCardNode[0].getChildByName(this.QIPAI);
         this.SetNodeActive(lcaolnode,true);
         //倒计时面板
@@ -266,7 +309,34 @@ export class PSZ_SceneMgr extends Component {
     //比牌
     onCompare()
     {
-        
+        if (this.isBiPai == false)
+        {
+            this.isBiPai = true;
+            for( let i = 0; i <this.instantiateHeadNode.length; i ++ )
+            {
+                if (this.instantiateHeadNode[i] != undefined)
+                {
+                        let target = this.instantiateCardNode[i].getChildByName(this.QIPAI);
+                        if (target.active != true )
+                        {
+                            this.instantiateHeadNode[i].getChildByName("VS").active = true;
+                        }
+                }
+            }
+            this.instantiateHeadNode[0].getChildByName("VS").active = false;
+        }
+        else
+        {
+            this.isBiPai = false
+            for( let i = 0; i <this.instantiateHeadNode.length; i ++ )
+            {
+                if (this.instantiateHeadNode[i] != undefined)
+                {
+                    this.instantiateHeadNode[i].getChildByName("VS").active = false;
+                }
+            }
+            this.instantiateHeadNode[0].getChildByName("VS").active = false;
+        }
     }
 
 
@@ -304,9 +374,9 @@ export class PSZ_SceneMgr extends Component {
            }
         }
         //显示一组牌面
-        this.XianShiPaiMian(this.card0,data.carde0);
-        this.XianShiPaiMian(this.card1,data.carde1);
-        this.XianShiPaiMian(this.card2,data.carde2);
+        this.XianShiPaiMian(0,this.card0,data.carde0);
+        this.XianShiPaiMian(0,this.card1,data.carde1);
+        this.XianShiPaiMian(0,this.card2,data.carde2);
         //显示弃牌按钮
         this.SetNodeActive(this.abandonNode,false);
         // this.SetNodeActive(this.compareNode,true);
@@ -319,12 +389,12 @@ export class PSZ_SceneMgr extends Component {
     // }
 
     //显示牌面
-    XianShiPaiMian(name:string,sum)
+    XianShiPaiMian(index,name:string,sum)
     {
         resources.load(this.PAIDELUJING+sum+this.HOUZHUI,SpriteFrame,(err,sprite)=>
         {
-            this.instantiateCardNode[0].getChildByName(name).getChildByName(this.PAIDETUPIAN).getComponent(Sprite).spriteFrame = sprite
-            this.instantiateCardNode[0].getChildByName(name).getChildByName(this.PAIDETUPIAN).scale = new Vec3(this.CARDSHUOFANG, this.CARDSHUOFANG, this.CARDSHUOFANG)
+            this.instantiateCardNode[index].getChildByName(name).getChildByName(this.PAIDETUPIAN).getComponent(Sprite).spriteFrame = sprite
+            this.instantiateCardNode[index].getChildByName(name).getChildByName(this.PAIDETUPIAN).scale = new Vec3(this.CARDSHUOFANG, this.CARDSHUOFANG, this.CARDSHUOFANG)
         })
     }
     //更新分数
@@ -370,7 +440,16 @@ export class PSZ_SceneMgr extends Component {
     //结束
     onSyncAllPlayerWin(data)
     {
-        console.log("<PSZ------结束>",data)
+        console.log("<PSZ------结束>",data);
+        for( let i = 0; i <this.instantiateCardNode.length; i ++ )
+        {
+           if (this.instantiateCardNode[i] != undefined)
+           {
+                this.instantiateCardNode[i].destroy();
+           }
+        }
+
+        this.instantiateCardNode[0].getChildByName(this.QIPAI).active = false;
     }
     //更新第几局
     onUpdateCurrent(data)
@@ -413,7 +492,7 @@ export class PSZ_SceneMgr extends Component {
             //取消倒计时
             this.isTime = false;
             //弃牌
-            this.SetNodeActive(this.abandonNode,true);
+            this.SetNodeActive(this.abandonNode,false);
             //下注面板
             this.SetNodeActive(this.addNode,false);
             //倒计时面板
@@ -431,6 +510,8 @@ export class PSZ_SceneMgr extends Component {
         {
             console.log("<PSZ------当前加注分数比上家小，无法加注>")
         }
+        
+        this.instantiateCardNode[0].getChildByName(this.QIPAI).active = false;
     }
     //加注关闭
     onAddNodeClose()
@@ -448,7 +529,7 @@ export class PSZ_SceneMgr extends Component {
         //取消倒计时
         this.isTime = false;
         //弃牌
-        this.SetNodeActive(this.abandonNode,true);
+        this.SetNodeActive(this.abandonNode,false);
         //下注面板
         this.SetNodeActive(this.downNode,false);
         //倒计时面板
@@ -461,6 +542,8 @@ export class PSZ_SceneMgr extends Component {
         this.SetNodeActive(this.addGoldButton,false);
         //比牌
         this.SetNodeActive(this.compareNode,false);
+        
+        this.instantiateCardNode[0].getChildByName(this.QIPAI).active = false;
     }
     
     /*-----------------------跟注----------------------- */
@@ -490,7 +573,7 @@ export class PSZ_SceneMgr extends Component {
         //取消倒计时
         this.isTime = false;
         //弃牌
-        this.SetNodeActive(this.abandonNode,true);
+        this.SetNodeActive(this.abandonNode,false);
         //下注面板
         this.SetNodeActive(this.downNode,false);
         //倒计时面板
@@ -503,6 +586,8 @@ export class PSZ_SceneMgr extends Component {
         this.SetNodeActive(this.addGoldButton,false);
         //比牌
         this.SetNodeActive(this.compareNode,false);
+        
+        this.instantiateCardNode[0].getChildByName(this.QIPAI).active = false;
     }
     /*-----------------------下注----------------------- */
 
@@ -538,7 +623,17 @@ export class PSZ_SceneMgr extends Component {
       
     }
 
-  
+    //显示败者牌面
+    onShowLoserCaede(data)
+    {
+        let index = this.getLocalIndex(data.user_seatIndex,globalThis._userInfo.SeataIndex,6)
+        console.log("<显示牌面---------------------------->",data)
+        this.XianShiPaiMian(index,this.card0,data.user_myCarde.carde0);
+        this.XianShiPaiMian(index,this.card1,data.user_myCarde.carde1);
+        this.XianShiPaiMian(index,this.card2,data.user_myCarde.carde2);
+    }
+
+
     
 
     update(dt: number) {
@@ -572,12 +667,14 @@ export class PSZ_SceneMgr extends Component {
                 //加注界面
                 this.SetNodeActive(this.addNode,false);
                 //弃牌
-                this.SetNodeActive(this.abandonNode,true);
+                this.SetNodeActive(this.abandonNode,false);
+                for (let i = 0; i < this.instantiateHeadNode.length; i++)
+                {
+                    this.instantiateHeadNode[i].getChildByName("VS").active = false;
+                }
             }
 
         } 
-      
-        
     }
 }
 

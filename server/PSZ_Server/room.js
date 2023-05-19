@@ -147,19 +147,10 @@ class Room{
             let player = this.playerList[i];
             if (index >= this.playerList.length-1 && noAbandon)
             {
-                global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_win",{data:"结束"},player.client);
-                //给胜利者加分
-                noAbandon.score += this.roomscore;
-                this.roomscore = 0;
-                //同步给所有人
-                this.sendScore();
-                this.current_numbers += 1;
-                //给所有人发送当前是第几局
-                this.sendGameNum()
+               return true;
             }
         }
-        //去掉定时器
-        this.StoTime();
+        return false;
     }
 
 
@@ -334,6 +325,7 @@ class Room{
             //保存入场条件   每个人十分，结束后归胜利者所有
             this.roomscore += 10;
             global.PSZServerMgr.PSZServerMgr.sendMessage("start_game",data,player.client);
+            player.getCard();
         })
 
         // this.playerNum = this.playerList.length;
@@ -497,7 +489,64 @@ class Room{
                 {
                     // global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
                     this.leader += 1;
-                    this.waitTime = 0;
+                    this.waitTime = 30000;
+                    if(this.leader == this.playerList.length)
+                    {
+                        this.leader = 0;
+                    }
+                    break;
+                }
+                else
+                {
+                    global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
+                    this.leader += 1;
+                    this.waitTime = 30000;
+                    if(this.leader == this.playerList.length)
+                    {
+                        this.leader = 0;
+                    }
+                    break;
+                }
+            }
+        }
+
+    }
+
+    sendBiPaiShowUI()
+    {
+        console.log("进入是哪位玩家操作的方法>>>>>>>")
+        let data
+        if (this.isOne)
+        {
+            data =
+                {
+                    isOne : true,
+                    time : 30,
+                }
+        }
+        else
+        {
+            data =
+                {
+                    isOne : false,
+                    time : 30,
+                }
+        }
+
+        // console.log("房间内的人数>>>>>>>>>",this.playerList.length)
+        // console.log("随机的庄家>>>>>>>>>",this.leader)
+        // console.log(this.playerList)
+
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            if(i == this.leader)
+            {
+                let player = this.playerList[i];
+                if (player.isAbandon == true)
+                {
+                    // global.PSZServerMgr.PSZServerMgr.sendMessage("show_ui",data,player.client);
+                    this.leader += 2;
+                    this.waitTime = 30000;
                     if(this.leader == this.playerList.length)
                     {
                         this.leader = 0;
@@ -521,7 +570,7 @@ class Room{
     }
 
 
-    QieHuanWanJia()
+    QieHuanWanJia(player)
     {
         this.onMinAddScore();
         this.sendScore();
@@ -542,7 +591,7 @@ class Room{
         this.roomscore += data.data;
         player.down_score += data.data;
         player.score -= data.data;
-        this.QieHuanWanJia();
+        this.QieHuanWanJia(player);
     }
     //跟注的响应
     onHeelScore(player)
@@ -551,7 +600,7 @@ class Room{
         this.roomscore += this.heelscore;
         player.down_score += this.heelscore;
         player.score -= this.heelscore;
-        this.QieHuanWanJia();
+        this.QieHuanWanJia(player);
     }
     //加注响应
     onAddScore(data,player)
@@ -561,9 +610,153 @@ class Room{
         this.roomscore += data.data;
         player.down_score += data.data;
         player.score -= data.data;
-        this.QieHuanWanJia();
+        this.QieHuanWanJia(player);
     }
 
+    //比牌
+    // 0:散牌  1：对子  2：顺子  3: 同色 4:同花顺 5:豹子  6: 235
+    onCompare(data,player)
+    {
+        this.roomscore += (this.heelscore *2);
+        player.down_score += (this.heelscore *2);
+        player.score -= (this.heelscore *2);
+        let playerInfo = this.playerList[data.index];
+        //235
+        if (player.isCardeXing == 6 )
+        {
+            if (playerInfo.isCardeXing == 5)
+            {
+                playerInfo.isAbandon = true;
+            }
+        }
+        else
+        {
+            this.baoZiYiXiaPanDuanWIN(player,playerInfo);
+        }
+        if (playerInfo.isCardeXing == 6 )
+        {
+            if (player.isCardeXing == 5)
+            {
+                player.isAbandon = true;
+            }
+        }
+        else
+        {
+            this.baoZiYiXiaPanDuanWIN(player,playerInfo);
+        }
+
+        this.onUpDataQiPai();
+        this.onMinAddScore();
+        this.sendScore();
+        this.StoTime();
+        this.timeTimeout = null;
+        this.sendBiPaiShowUI();
+        this.onTimeout();
+        // this.QieHuanWanJia(player);
+        if (this.roomWin())
+        {
+            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_win",{data:"结束"},player.client);
+
+            let noAbandon = undefined;
+            for (let i = 0; i < this.playerList.length; i++) {
+
+                if (this.playerList[i].getIsAbandon())
+                {
+                }
+                else
+                {
+                    console.log("进入为弃牌的if")
+                    noAbandon = this.playerList[i]
+                }
+            }
+
+            //给胜利者加分
+            noAbandon.score += this.roomscore;
+            this.roomscore = 0;
+            //同步给所有人
+            this.sendScore();
+            this.current_numbers += 1;
+            //给所有人发送当前是第几局
+            this.sendGameNum()
+
+            //去掉定时器
+            this.StoTime();
+            this.timeTimeout = null;
+
+            for (let i = 0; i < this.playerList.length; i++) {
+                let player = this.playerList[i];
+                player.down_score = 0;
+                player.isAbandon = false;
+                player.isCardeXing = 0;
+                player.caedeSize1 = 0;
+                player.caedeSize2 = 0;
+                player.caedeSize3 = 0;
+            }
+            this.isOne = true;
+            this.sendScore();
+
+            this.syncStartGame()
+        }
+        else
+        {
+            let playerdata = playerInfo.getPlayerMyCarde();
+            global.PSZServerMgr.PSZServerMgr.sendMessage("show_loser_carde",playerdata,player.client);
+        }
+
+    }
+
+    //豹子一下的判断 除去235
+    //235// 0:散牌  1：对子  2：顺子  3: 同色 4:同花顺 5:豹子  6: 235
+    baoZiYiXiaPanDuanWIN(player,playerInfo)
+    {
+
+        if(player.isCardeXing > playerInfo.isCardeXing)
+        {
+            playerInfo.isAbandon = true;
+        }
+        else if(player.isCardeXing < playerInfo.isCardeXing)
+        {
+            player.isAbandon = true;
+        }
+        else if (player.isCardeXing  == playerInfo.isCardeXing)
+        {
+            if (player.caedeSize1 > playerInfo.caedeSize1)
+            {
+                playerInfo.isAbandon = true;
+            }
+            else if  (player.caedeSize1 < playerInfo.caedeSize1)
+            {
+                player.isAbandon = true;
+            }
+            else  if (player.caedeSize1 == playerInfo.caedeSize1)
+            {
+                if (player.caedeSize2 == playerInfo.caedeSize2)
+                {
+                    if (player.caedeSize3 == playerInfo.caedeSize3)
+                    {
+                        player.isAbandon = true;
+                    }
+                    else if (player.caedeSize3 > playerInfo.caedeSize3)
+                    {
+                        playerInfo.isAbandon = true;
+                    }
+                    else if (player.caedeSize3 < playerInfo.caedeSize3)
+                    {
+                        player.isAbandon = true;
+                    }
+                }
+                else if (player.caedeSize2 > playerInfo.caedeSize2)
+                {
+                    playerInfo.isAbandon = true;
+                }
+                else if (player.caedeSize2 < playerInfo.caedeSize2)
+                {
+                    player.isAbandon = true;
+                }
+            }
+
+        }
+    }
 
     //加注最低分同步
     onMinAddScore()
@@ -576,7 +769,20 @@ class Room{
     }
 
 
-
+    onUpDataQiPai()
+    {
+        let playerInfoList = [];
+        for (let i = 0 ; i<this.playerList.length;i++)
+        {
+            let playerReadyState = this.playerList[i].getPlayerAbandon();
+            playerInfoList.push(playerReadyState);
+        }
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_abandon",playerInfoList,player.client);
+        }
+    }
 
 
     //随机庄家
