@@ -1,4 +1,4 @@
-import { _decorator, Button, Component, instantiate, Label, math, Node, Prefab, resources, Sprite, SpriteFrame, Texture2D, Vec3 } from 'cc';
+import { _decorator, Button, Component, director, instantiate, Label, math, Node, Prefab, resources, Sprite, SpriteFrame, Texture2D, Vec3 } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('PSZ_SceneMgr')
@@ -55,6 +55,9 @@ export class PSZ_SceneMgr extends Component {
     //加注界面
     @property(Node)
     addNode:Node = null;
+    //结束界面
+    @property(Node)
+    winPnl:Node = null;
 
 
 
@@ -116,6 +119,9 @@ export class PSZ_SceneMgr extends Component {
         this.SetNodeActive(this.heelGoldButton,false);
         this.SetNodeActive(this.downGoldButton,false);
         this.SetNodeActive(this.timeNode,false);
+        this.SetNodeActive(this.winPnl,false);
+        this.SetNodeActive(this.winPnl.getChildByName("win"),false);
+        this.SetNodeActive(this.winPnl.getChildByName("lose"),false);
     }
 
  
@@ -134,6 +140,7 @@ export class PSZ_SceneMgr extends Component {
         globalThis._eventTarget.on("show_ui",this.onShowUI,this);
         globalThis._eventTarget.on("min_add_score",this.onMinAddScore,this);
         globalThis._eventTarget.on("show_loser_carde",this.onShowLoserCaede,this);
+        globalThis._eventTarget.on("sync_switch_scene",this.onSwitchScene,this);
         
 
     }
@@ -292,16 +299,28 @@ export class PSZ_SceneMgr extends Component {
         this.SetNodeActive(this.timeNode,false);
         //取消倒计时
         this.isTime = false;
-        //比牌
-        this.compareNode.getComponent(Button).interactable = false;
-        //弃牌
-        this.abandonNode.getComponent(Button).interactable = false;
+      
+        this.SetNodeActive(this.timeNode,false);
         //下注
-        this.addGoldButton.getComponent(Button).interactable = false;
+        this.SetNodeActive(this.downGoldButton,false);
         //跟注
-        this.heelGoldButton.getComponent(Button).interactable = false;
+        this.SetNodeActive(this.heelGoldButton,false);
         //加注
-        this.downGoldButton.getComponent(Button).interactable = false;
+        this.SetNodeActive(this.addGoldButton,false);
+        //比牌
+        this.SetNodeActive(this.compareNode,false);
+        //下注界面
+        this.SetNodeActive(this.downNode,false);
+        //加注界面
+        this.SetNodeActive(this.addNode,false);
+        //弃牌
+        this.SetNodeActive(this.abandonNode,false);
+        for (let i = 0; i < this.instantiateHeadNode.length; i++)
+        {
+            if (this.instantiateHeadNode[i] != undefined) {
+                this.instantiateHeadNode[i].getChildByName("VS").active = false;
+            }
+        }
 
         globalThis._PSZClientMgr._sendMessage("abandon",{userID:globalThis._userInfo.user_id})
     }
@@ -358,6 +377,10 @@ export class PSZ_SceneMgr extends Component {
 
     onStartGame(data)
     {
+        this.SetNodeActive(this.winPnl,false);
+        this.SetNodeActive(this.winPnl.getChildByName("win"),false);
+        this.SetNodeActive(this.winPnl.getChildByName("lose"),false);
+
         console.log("<游戏开始------>",data)
         let len = this.instantiateHeadNode.length
         for( let i = 0; i <this.instantiateHeadNode.length; i ++ )
@@ -441,6 +464,7 @@ export class PSZ_SceneMgr extends Component {
     onSyncAllPlayerWin(data)
     {
         console.log("<PSZ------结束>",data);
+        
         for( let i = 0; i <this.instantiateCardNode.length; i ++ )
         {
            if (this.instantiateCardNode[i] != undefined)
@@ -448,8 +472,42 @@ export class PSZ_SceneMgr extends Component {
                 this.instantiateCardNode[i].destroy();
            }
         }
-
         this.instantiateCardNode[0].getChildByName(this.QIPAI).active = false;
+
+        this.SetNodeActive(this.winPnl,true);
+        this.SetNodeActive(this.timeNode,false);
+        //下注
+        this.SetNodeActive(this.downGoldButton,false);
+        //跟注
+        this.SetNodeActive(this.heelGoldButton,false);
+        //加注
+        this.SetNodeActive(this.addGoldButton,false);
+        //比牌
+        this.SetNodeActive(this.compareNode,false);
+        //下注界面
+        this.SetNodeActive(this.downNode,false);
+        //加注界面
+        this.SetNodeActive(this.addNode,false);
+        //弃牌
+        this.SetNodeActive(this.abandonNode,false);
+        for (let i = 0; i < this.instantiateHeadNode.length; i++)
+        {
+            if (this.instantiateHeadNode[i] != undefined) {
+                this.instantiateHeadNode[i].getChildByName("VS").active = false;
+            }
+        }
+        console.log("自己的id《《《《《《《《《《《《《《《《《",typeof globalThis._userInfo.user_id);
+        console.log("data《《《《《《《《《《《《《《《《《",typeof data.uid);
+
+        if(data.uid === globalThis._userInfo.user_id)
+        {
+            this.SetNodeActive(this.winPnl.getChildByName("win"),true);
+        }
+        else
+        {
+            this.SetNodeActive(this.winPnl.getChildByName("lose"),true);
+        }
+    
     }
     //更新第几局
     onUpdateCurrent(data)
@@ -633,7 +691,10 @@ export class PSZ_SceneMgr extends Component {
         this.XianShiPaiMian(index,this.card2,data.user_myCarde.carde2);
     }
 
-
+    onSwitchScene(data)
+    {
+        director.loadScene("HallScene");
+    }
     
 
     update(dt: number) {
@@ -670,7 +731,9 @@ export class PSZ_SceneMgr extends Component {
                 this.SetNodeActive(this.abandonNode,false);
                 for (let i = 0; i < this.instantiateHeadNode.length; i++)
                 {
-                    this.instantiateHeadNode[i].getChildByName("VS").active = false;
+                    if (this.instantiateHeadNode[i] != undefined) {
+                        this.instantiateHeadNode[i].getChildByName("VS").active = false;
+                    }
                 }
             }
 

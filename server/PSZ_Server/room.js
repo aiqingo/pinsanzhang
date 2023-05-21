@@ -21,6 +21,7 @@ class Room{
         this.leader = 0;
         //延迟存储的
         this.timeTimeout = undefined;
+        this.timeTimeoutTow = undefined;
         //第一轮吗
         this.isOne = true;
         //延迟多少秒
@@ -115,14 +116,133 @@ class Room{
         }
         this.StoTime();
         this.timeTimeout = null
-        this.sendPlayerShowUI();
-        this.onTimeout();
-        this.roomWin();
+        // this.sendPlayerShowUI();
+        // this.onTimeout();
+        this.roomAbandonWin()
+    }
+
+    //弃牌胜利
+    roomWin()
+    {
+        let index = 0;
+        let noAbandon = undefined;
+        for (let i = 0; i < this.playerList.length; i++) {
+
+            if (this.playerList[i].getIsAbandon())
+            {
+                index++;
+            }
+            else
+            {
+                console.log("进入为弃牌的if")
+                noAbandon = this.playerList[i]
+            }
+        }
+        console.log("房间内弃牌的",index);
+        console.log("房间内所有人",this.playerList.length-1);
+        console.log("房间内noAbandon",noAbandon);
+
+        for(let i = 0 ;i < this.playerList.length;i++)
+        {
+            let player = this.playerList[i];
+            let data =
+                {
+                    uid:noAbandon.userID,
+                }
+
+            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_win",data,player.client);
+
+            if (index >= this.playerList.length-1 && noAbandon)
+            {
+                //给胜利者加分
+                noAbandon.score += this.roomscore;
+                this.roomscore = 0;
+                this.isOne = true;
+                this.heelscore = 0;
+                for (let i = 0; i < this.playerList.length; i++) {
+                    let player = this.playerList[i];
+                    player.down_score = 0;
+                    player.isAbandon = false;
+                    player.isCardeXing = 0;
+                    player.caedeSize1 = 0;
+                    player.caedeSize2 = 0;
+                    player.caedeSize3 = 0;
+                }
+                //同步给所有人
+                this.sendScore();
+                this.current_numbers += 1;
+                //给所有人发送当前是第几局
+                this.sendGameNum()
+                this.timeTow();
+            }
+        }
+    }
+    roomAbandonWin()
+    {
+        let noAbandon = undefined;
+        for (let i = 0; i < this.playerList.length; i++) {
+
+            if (this.playerList[i].getIsAbandon())
+            {
+            }
+            else
+            {
+                console.log("进入为弃牌的if")
+                noAbandon = this.playerList[i]
+            }
+        }
+        for (let i = 0; i < this.playerList.length; i++) {
+            let target = this.playerList[i];
+            let data =
+                {
+                    uid:noAbandon.userID,
+
+                }
+            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_win",data,target.client);
+        }
+
+        //给胜利者加分
+        noAbandon.score += this.roomscore;
+        this.roomscore = 0;
+        this.isOne = true;
+        this.heelscore = 0;
+        this.current_numbers += 1;
+        //给所有人发送当前是第几局
+        this.sendGameNum()
+
+        //去掉定时器
+        this.StoTime();
+        this.timeTimeout = null;
+
+        for (let i = 0; i < this.playerList.length; i++) {
+            let player = this.playerList[i];
+            player.down_score = 0;
+            player.isAbandon = false;
+            player.isCardeXing = 0;
+            player.caedeSize1 = 0;
+            player.caedeSize2 = 0;
+            player.caedeSize3 = 0;
+        }
+        //同步给所有人
+        this.sendScore();
+        if (this.current_numbers >= this.gameNumbers)
+        {
+            for (let i = 0; i < this.playerList.length; i++) {
+                let target = this.playerList[i];
+                let data =
+                    {
+                        secen:"HallScene",
+                    }
+                global.PSZServerMgr.PSZServerMgr.sendMessage("sync_switch_scene",data,target.client);
+            }
+            return;
+        }
+        this.timeTow();
     }
 
 
     //弃牌胜利
-    roomWin()
+    isWin()
     {
         let index = 0;
         let noAbandon = undefined;
@@ -314,6 +434,7 @@ class Room{
         {
             this.playerList[i].score -= 10;
             this.playerList[i].down_score += 10;
+            this.heelscore = 10;
         }
         this.sendScore()
 
@@ -644,66 +765,72 @@ class Room{
         {
             this.baoZiYiXiaPanDuanWIN(player,playerInfo);
         }
-
-        this.onUpDataQiPai();
-        this.onMinAddScore();
-        this.sendScore();
-        this.StoTime();
-        this.timeTimeout = null;
-        this.sendBiPaiShowUI();
-        this.onTimeout();
         // this.QieHuanWanJia(player);
-        if (this.roomWin())
+        this.win(player,playerInfo);
+
+    }
+
+    //初始化房间内数据
+    win(player,playerInfo)
+    {
+        if (this.isWin())
         {
-            global.PSZServerMgr.PSZServerMgr.sendMessage("sync_all_player_win",{data:"结束"},player.client);
-
-            let noAbandon = undefined;
-            for (let i = 0; i < this.playerList.length; i++) {
-
-                if (this.playerList[i].getIsAbandon())
-                {
-                }
-                else
-                {
-                    console.log("进入为弃牌的if")
-                    noAbandon = this.playerList[i]
-                }
-            }
-
-            //给胜利者加分
-            noAbandon.score += this.roomscore;
-            this.roomscore = 0;
-            //同步给所有人
-            this.sendScore();
-            this.current_numbers += 1;
-            //给所有人发送当前是第几局
-            this.sendGameNum()
-
-            //去掉定时器
-            this.StoTime();
-            this.timeTimeout = null;
-
-            for (let i = 0; i < this.playerList.length; i++) {
-                let player = this.playerList[i];
-                player.down_score = 0;
-                player.isAbandon = false;
-                player.isCardeXing = 0;
-                player.caedeSize1 = 0;
-                player.caedeSize2 = 0;
-                player.caedeSize3 = 0;
-            }
-            this.isOne = true;
-            this.sendScore();
-
-            this.syncStartGame()
+            this.roomAbandonWin()
         }
         else
         {
             let playerdata = playerInfo.getPlayerMyCarde();
+            let playerdata2 = player.getPlayerMyCarde();
             global.PSZServerMgr.PSZServerMgr.sendMessage("show_loser_carde",playerdata,player.client);
+            global.PSZServerMgr.PSZServerMgr.sendMessage("show_loser_carde",playerdata2,playerInfo.client);
+            this.onUpDataQiPai();
+            this.onMinAddScore();
+            this.sendScore();
+            this.StoTime();
+            this.timeTimeout = null;
+            this.sendBiPaiShowUI();
+            this.onTimeout();
         }
 
     }
+
+    //延迟2秒重新发牌
+    timeTow()
+    {
+        this.timeTimeoutTow = setTimeout(()=>{
+            //打乱牌堆
+            let cardarr =  this.Shuffle();
+            //存储当前方房间的牌
+            this.roomCard = cardarr;
+            //同步分数
+            for(let i = 0 ;i < this.playerList.length;i++)
+            {
+                this.playerList[i].score -= 10;
+                this.playerList[i].down_score += 10;
+            }
+            this.sendScore()
+
+            //给每个玩家发牌和发送和开始消息
+            this.playerList.forEach((player)=>{
+                let data = this.SendCard();
+                //保存每个玩家的牌
+                player.myCarde = data;
+                //保存入场条件   每个人十分，结束后归胜利者所有
+                this.roomscore += 10;
+                global.PSZServerMgr.PSZServerMgr.sendMessage("start_game",data,player.client);
+                player.getCard();
+            })
+
+            // this.playerNum = this.playerList.length;
+            this.leader = this.onRandomLeader();
+            this.sendPlayerShowUI();
+            this.onTimeout();
+            this.isOne = false;
+        },30000);
+
+
+    }
+
 
     //豹子一下的判断 除去235
     //235// 0:散牌  1：对子  2：顺子  3: 同色 4:同花顺 5:豹子  6: 235
