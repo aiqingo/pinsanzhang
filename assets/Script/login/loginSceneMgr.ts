@@ -1,13 +1,15 @@
-import { _decorator, Component, director, EditBox, Node, resources, Sprite, SpriteFrame } from 'cc';
+import { _decorator, Component, director, EditBox, input, instantiate, Label, Node, Prefab,  Sprite, SpriteFrame } from 'cc';
+import { MessageData } from '../common/MessageData';
 const { ccclass, property } = _decorator;
+
 
 @ccclass('loginSceneMgr')
 export class loginSceneMgr extends Component {
 
     @property(Node)
     my_EdiyBox:Node = null; 
-    @property(Node)
-    aaaa:Node = null; 
+    @property(Prefab)
+    message:Prefab = null; 
     
     start() {
        
@@ -51,8 +53,12 @@ export class loginSceneMgr extends Component {
 
     public onLoginMessage(data)
     {
-        if(data.err)
+        if(data)
         {
+            let message = instantiate(this.message);
+            console.log("< MessageData[data.err]>", MessageData[data])
+            message.getChildByName("MssageLable").getComponent(Label).string = MessageData[data];
+            this.node.addChild(message);
             console.log("暂无当前输入测试账户");
             return;
         }

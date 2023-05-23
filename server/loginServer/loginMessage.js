@@ -3,6 +3,8 @@ const  message = require("../comment/Message");
 class LonginMessage /*extends message*/ {
     constructor() {
         // super();
+        //存储上线的所有玩家
+        this.onLinePlayer = []
     }
 
     static getInstance()
@@ -50,17 +52,35 @@ class LonginMessage /*extends message*/ {
         switch (type)
         {
             case "login":
-                this.responseUserLoginMessage(data.id).then((result)=>{
-                    this.sendMessage(type,result[0],client)
-                }).catch((err)=>{
-                    this.sendMessage(type,{err:"《login---》获取不到对应数据"},client);
-                });
-                break;
+                // if (this.linePlayer(data.id))
+                // {
+                //
+                //     this.sendMessage(type,{data:"accountLine"},client);
+                //     return;
+                // }
+                // else
+                // {
+                    this.onLinePlayer.push(data.id);
+                    this.responseUserLoginMessage(data.id).then((result)=>{
+                        this.sendMessage(type,result[0],client)
+                    }).catch((err)=>{
+                        this.sendMessage(type,{err:"《login---》获取不到对应数据"},client);
+                    });
+                    break;
+                // }
+
             default:
                 break;
         }
 
     }
+
+    //获取玩家是否在线
+    linePlayer(userId)
+    {
+        return  this.onLinePlayer.includes(userId);
+    }
+
     sendMessage(type,data,client)
     {
         let result = {

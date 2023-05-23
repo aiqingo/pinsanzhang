@@ -227,17 +227,22 @@ class Room{
         this.sendScore();
         if (this.current_numbers >= this.gameNumbers)
         {
-            for (let i = 0; i < this.playerList.length; i++) {
-                let target = this.playerList[i];
-                let data =
-                    {
-                        secen:"HallScene",
-                    }
-                global.PSZServerMgr.PSZServerMgr.sendMessage("sync_switch_scene",data,target.client);
-            }
-            return;
+            let escTime = setTimeout( () =>{
+                for (let i = 0; i < this.playerList.length; i++) {
+                    let target = this.playerList[i];
+                    let data =
+                        {
+                            secen:"HallScene",
+                        }
+                    global.PSZServerMgr.PSZServerMgr.sendMessage("sync_switch_scene",data,target.client);
+                }
+            },5000)
         }
-        this.timeTow();
+        else
+        {
+            this.timeTow();
+        }
+
     }
 
 
@@ -826,7 +831,7 @@ class Room{
             this.sendPlayerShowUI();
             this.onTimeout();
             this.isOne = false;
-        },30000);
+        },5000);
 
 
     }

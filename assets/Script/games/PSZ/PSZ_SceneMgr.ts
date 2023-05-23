@@ -42,6 +42,13 @@ export class PSZ_SceneMgr extends Component {
     //下注
     @property(Node)
     downGoldButton:Node = null;
+    //结束界面
+    @property(Node)
+    escNode:Node = null;
+    //结束界面提示
+    @property(Label)
+    escLabel:Label = null;
+        
     
     //倒计时
     @property(Node)
@@ -58,8 +65,10 @@ export class PSZ_SceneMgr extends Component {
     //结束界面
     @property(Node)
     winPnl:Node = null;
-
-
+    //延迟5秒返回大厅
+    escTime = 0;
+    //是否开始延迟
+    isEscTime = false;
 
     //弃牌image
     QIPAI = "qipai";
@@ -120,6 +129,7 @@ export class PSZ_SceneMgr extends Component {
         this.SetNodeActive(this.downGoldButton,false);
         this.SetNodeActive(this.timeNode,false);
         this.SetNodeActive(this.winPnl,false);
+        this.SetNodeActive(this.escNode,false);
         this.SetNodeActive(this.winPnl.getChildByName("win"),false);
         this.SetNodeActive(this.winPnl.getChildByName("lose"),false);
     }
@@ -690,15 +700,35 @@ export class PSZ_SceneMgr extends Component {
         this.XianShiPaiMian(index,this.card1,data.user_myCarde.carde1);
         this.XianShiPaiMian(index,this.card2,data.user_myCarde.carde2);
     }
-
+    //退出
     onSwitchScene(data)
+    {
+        this.escTime = 5; 
+        this.SetNodeActive(this.escNode,true);
+    }
+    
+    //结束界面按钮监听
+    onEscClick()
     {
         director.loadScene("HallScene");
     }
-    
 
     update(dt: number) {
+        if(this.escTime > 0 )
+        {
+            this.escTime -= dt;
+            this.escLabel.string = Math.floor(this.escTime)+"s后退出..."
+        }
+        else
+        {
+            this.isEscTime = true;
+        }
 
+        if (this.isEscTime == true)
+        {
+            director.loadScene("HallScene");
+        }
+   
         if(this.isTime)
         {
             if(this.Time > 0 )
